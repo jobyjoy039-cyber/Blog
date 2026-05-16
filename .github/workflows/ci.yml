@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# Least-privilege token (closes audit VULN-501). Override per-job if needed.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same ref to save runner minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.0 (SHA-pinned, closes VULN-503)
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.0.0 (SHA-pinned)
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        # Use the dev extras group so PR builds resolve identically to local
+        # development. The pyproject.toml `dev` group pins pytest, textstat,
+        # and beautifulsoup4 within bounded ranges (closes audit VULN-502).
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: python -m pytest tests/ -v
+
+  validate-skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.0 (SHA-pinned, closes VULN-503)
+
+      - name: Validate SKILL.md frontmatter
+        run: |
+          echo "Checking all SKILL.md files have required frontmatter..."
+          errors=0
+          for file in $(find skills -name "SKILL.md"); do
+            if ! head -1 "$file" | grep -q "^---"; then
+              echo "ERROR: $file missing YAML frontmatter"
+              errors=$((errors + 1))
+            fi
+            if ! grep -q "^name:" "$file"; then
+              echo "ERROR: $file missing 'name' field"
+              errors=$((errors + 1))
+            fi
+            if ! grep -q "^description:" "$file" && ! grep -q "description: >" "$file"; then
+              echo "ERROR: $file missing 'description' field"
+              errors=$((errors + 1))
+            fi
+          done
+          if [ $errors -gt 0 ]; then
+            echo "Found $errors validation errors"
+            exit 1
+          fi
+          echo "All SKILL.md files valid"
+
+      - name: Validate plugin.json
+        run: |
+          python3 -c "
+          import json, sys
+          with open('.claude-plugin/plugin.json') as f:
+              data = json.load(f)
+          required = ['name', 'description', 'author']
+          missing = [k for k in required if k not in data]
+          if missing:
+              print(f'Missing required fields: {missing}')
+              sys.exit(1)
+          print('plugin.json is valid')
+          "
+
+  lint-markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.0 (SHA-pinned, closes VULN-503)
+
+      - name: Check for broken internal references
+        run: |
+          echo "Checking for stale blog/ path references..."
+          errors=0
+          # Check that no SKILL.md or doc references the old bare blog/ path (not skills/blog/)
+          for file in $(find skills docs -name "*.md"); do
+            if grep -Pn '(?<!skills/)blog/references/' "$file" 2>/dev/null; then
+              echo "WARNING: $file still references old 'blog/references/' path"
+              errors=$((errors + 1))
+            fi
+            if grep -Pn '(?<!skills/)blog/templates/' "$file" 2>/dev/null; then
+              echo "WARNING: $file still references old 'blog/templates/' path"
+              errors=$((errors + 1))
+            fi
+          done
+          if [ $errors -gt 0 ]; then
+            echo "Found $errors stale path references"
+            exit 1
+          fi
+          echo "No stale path references found"
