@@ -154,6 +154,31 @@ Look for patterns across posts:
 - Are posts with sourced stats scoring higher on AI citation readiness?
 - Is there a word count sweet spot in the top performers?
 
+### Step 5b — Trend Comparison (if prior report exists)
+
+Check if a previous report exists in `performance/`:
+```bash
+ls performance/*.md | sort | tail -2
+```
+
+If two or more reports exist, load the most recent prior report and compare:
+
+**Metrics to trend:**
+- Average composite score (this month vs last month)
+- Total organic clicks (if GSC available)
+- Posts in each status band (did more posts move to Top Performer?)
+- Number of posts refreshed (decay resolved)
+- New posts published since last report
+
+**Trend classification per metric:**
+- Improved > 10% = Strong Growth ↑↑
+- Improved 1-10% = Growth ↑
+- Flat (-1% to +1%) = Stable →
+- Declined 1-10% = Declining ↓
+- Declined > 10% = Significant Decline ↓↓
+
+Output a trend summary table at the top of the report when prior data exists.
+
 ### Step 6 — Build the Report
 
 ## Output Format

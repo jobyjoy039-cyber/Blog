@@ -116,12 +116,64 @@ Convert the blog post from its source format to the CMS target format:
   via a markdown parser
 - **Markdown → Ghost**: pass as HTML or Lexical JSON
 - **Markdown → Shopify**: convert to HTML, escape properly for JSON payload
+- **Markdown → Webflow**: convert to Webflow Rich Text JSON format (see below)
+- **Markdown → Contentful**: convert to Contentful Rich Text document format
 
 Handle special elements:
 - SVG charts: paste as inline HTML in the body
 - JSON-LD schema: inject as `<script type="application/ld+json">` in body
   or via CMS custom fields
 - Images: verify all URLs are absolute (not relative paths)
+
+### Webflow CMS (REST API)
+
+**Required config:**
+- `WEBFLOW_SITE_ID`
+- `WEBFLOW_COLLECTION_ID`
+- `WEBFLOW_API_KEY`
+
+**Publishing flow:**
+1. Convert markdown to Webflow Rich Text JSON
+2. Map frontmatter: name (slug), post-body (rich text), post-summary,
+   main-image, publish-date, tags (as reference IDs)
+3. POST to `https://api.webflow.com/v2/collections/[id]/items`
+4. Set `isArchived: false`, `isDraft: false` to publish immediately
+5. Verify response contains item `id` and `slug`
+
+Webflow Rich Text JSON structure:
+```json
+{
+  "type": "root",
+  "children": [
+    { "type": "heading", "tag": "h2", "children": [{"type": "text", "value": "Section"}] },
+    { "type": "paragraph", "children": [{"type": "text", "value": "Content..."}] }
+  ]
+}
+```
+
+### Contentful (Content Management API)
+
+**Required config:**
+- `CONTENTFUL_SPACE_ID`
+- `CONTENTFUL_ENVIRONMENT` (default: master)
+- `CONTENTFUL_MANAGEMENT_TOKEN`
+
+**Publishing flow:**
+1. Convert markdown to Contentful Rich Text document format
+2. Create the entry:
+   ```bash
+   curl -X POST "https://api.contentful.com/spaces/[id]/environments/[env]/entries" \
+     -H "Authorization: Bearer $CONTENTFUL_MANAGEMENT_TOKEN" \
+     -H "X-Contentful-Content-Type: blogPost" \
+     -d @/tmp/contentful-payload.json
+   ```
+3. Publish the entry (separate API call after creation):
+   ```bash
+   curl -X PUT "https://api.contentful.com/spaces/[id]/environments/[env]/entries/[entry-id]/published" \
+     -H "Authorization: Bearer $CONTENTFUL_MANAGEMENT_TOKEN" \
+     -H "X-Contentful-Version: [version]"
+   ```
+4. Verify published status in response
 
 ### Step 4 — Publish to CMS
 
