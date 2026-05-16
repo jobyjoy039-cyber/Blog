@@ -251,6 +251,52 @@ SKILLS = {
         "save_dir": None, "save_prefix": None,
         "web_tools": False,
     },
+    "humanize": {
+        "label": "Content Humanizer",
+        "icon": "🧬",
+        "skill_dir": "blog-humanize",
+        "description": "Rewrite AI-generated content to pass GPTZero, Originality.ai, Copyleaks & Turnitin. Adds burstiness, removes AI vocabulary, and injects authentic voice.",
+        "fields": [
+            {"name": "content",   "label": "AI-Generated Content", "type": "textarea",
+             "placeholder": "Paste the AI-generated text to humanize…", "rows": 12},
+            {"name": "intensity", "label": "Intensity", "type": "select",
+             "options": [("moderate","Moderate — restructure sentences, replace vocab, add voice (recommended)"),
+                         ("light","Light — vocabulary swap + sentence variation only"),
+                         ("heavy","Heavy — full rewrite, strong authorial voice")]},
+            {"name": "notes", "label": "Extra Instructions (optional)", "type": "textarea",
+             "placeholder": "Keep the formal tone, preserve all statistics, write in first person…",
+             "required": False, "rows": 2},
+        ],
+        "prompt": "Humanize this content at intensity level: {intensity}.\nExtra instructions: {notes}\n\n---\n{content}",
+        "save_dir": "posts", "save_prefix": "humanized",
+        "web_tools": False,
+    },
+    "ai-proof": {
+        "label": "AI-Proof Writer",
+        "icon": "🛡️",
+        "skill_dir": "blog-ai-proof",
+        "description": "Generate blog posts from scratch that pass every AI detector — GPTZero, Originality.ai, Copyleaks, Turnitin — using built-in burstiness, authentic voice, and zero AI vocabulary.",
+        "fields": [
+            {"name": "keyword",    "label": "Target Keyword / Topic", "type": "text",
+             "placeholder": "e.g. how to build backlinks without cold outreach"},
+            {"name": "word_count", "label": "Word Count", "type": "select",
+             "options": [("1500","1,500 words"),("2500","2,500 words"),
+                         ("3500","3,500 words"),("5000","5,000+ (pillar)")]},
+            {"name": "tone", "label": "Tone", "type": "select",
+             "options": [("conversational","Conversational — opinionated, direct, uses 'I'"),
+                         ("authoritative","Authoritative — expert-led, data-backed, formal-ish"),
+                         ("beginner-friendly","Beginner-friendly — plain English, lots of examples")]},
+            {"name": "persona", "label": "Author Persona (optional)", "type": "text",
+             "placeholder": "e.g. 10-year SEO consultant, startup founder, freelance writer",
+             "required": False},
+            {"name": "notes", "label": "Extra Instructions (optional)", "type": "textarea",
+             "placeholder": "Include a comparison table, add a case study section, target US audience…",
+             "required": False, "rows": 2},
+        ],
+        "prompt": "Write an AI-detection-proof blog post for: \"{keyword}\"\nWord count: {word_count}\nTone: {tone}\nAuthor persona: {persona}\nExtra instructions: {notes}",
+        "save_dir": "posts", "save_prefix": "ai-proof",
+        "web_tools": False,
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -646,6 +692,8 @@ def render(body: str, title: str = "Claude Blog", active: str = "") -> str:
   <a href="/run/write" class="nav-link {'active' if active=='write' else ''}">Write</a>
   <a href="/run/rewrite" class="nav-link {'active' if active=='rewrite' else ''}">Rewrite</a>
   <a href="/run/brief" class="nav-link {'active' if active=='brief' else ''}">Brief</a>
+  <a href="/run/humanize" class="nav-link {'active' if active=='humanize' else ''}">Humanize</a>
+  <a href="/run/ai-proof" class="nav-link {'active' if active=='ai-proof' else ''}">AI-Proof</a>
   <a href="/saved" class="nav-link {'active' if active=='saved' else ''}">Saved</a>
   <a href="/analyze" class="nav-link {'active' if active=='analyze' else ''}">Analyzer</a>
   <a href="/cluster-map" class="nav-link {'active' if active=='cluster' else ''}">Clusters</a>
