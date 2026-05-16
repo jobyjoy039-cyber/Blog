@@ -1287,136 +1287,213 @@ def settings():
 
 
 # ---------------------------------------------------------------------------
-# 11-Agent Pipeline
+# 13-Agent Orchestration Pipeline (6 phases)
 # ---------------------------------------------------------------------------
 
-PIPELINE_STEPS = [
+PHASES = [
     {
-        "step": 1, "id": "kw", "icon": "🔍", "agent": "Agent 1", "label": "Keyword Research",
-        "description": "Identify 8–10 keywords, LSI terms, competitor gaps, and placement strategy.",
+        "phase": 1, "label": "Research & Planning", "icon": "📋",
+        "steps": [1, 2], "color": "#58a6ff",
+        "gate": "Keywords are relevant and achievable for your domain authority. Brief clearly answers 'why should this article exist?'",
+        "fail_routes": {"Agent 1 (Keyword Research)": 1, "Agent 2 (Content Brief)": 2},
+    },
+    {
+        "phase": 2, "label": "Content Creation", "icon": "📝",
+        "steps": [3, 4, 5], "color": "#3fb950",
+        "gate": "Outline tells a complete story. Draft reads like a knowledgeable human, not AI. SEO targets met.",
+        "fail_routes": {"Agent 3 (Outline Optimizer)": 3, "Agent 4 (AI-Proof Writer)": 4, "Agent 5 (SEO Optimizer)": 5},
+    },
+    {
+        "phase": 3, "label": "Validation & Refinement", "icon": "🔍",
+        "steps": [6, 7], "color": "#d29922",
+        "gate": "No false or unverifiable claims. All stats attributed. Passes AI detection tools.",
+        "fail_routes": {"Agent 4 (AI-Proof Writer)": 4, "Agent 6 (Fact Check)": 6, "Agent 7 (Citations Audit)": 7},
+    },
+    {
+        "phase": 4, "label": "Enhancement & Polish", "icon": "✨",
+        "steps": [8, 9, 10], "color": "#bc8cff",
+        "gate": "Reads naturally, passes AI detection. Best headline selected. Every sentence earns its place.",
+        "fail_routes": {"Agent 4 (AI-Proof Writer)": 4, "Agent 8 (Humanizer)": 8, "Agent 9 (Headlines)": 9, "Agent 10 (Polish)": 10},
+    },
+    {
+        "phase": 5, "label": "Final Validation", "icon": "🔐",
+        "steps": [11, 12, 13], "color": "#f85149",
+        "gate": "All critical SEO checks pass. Content evergreen or clearly dated with update plan. Promotion strategy ready.",
+        "fail_routes": {"Agent 5 (SEO Optimizer)": 5, "Agent 11 (SEO Check)": 11, "Agent 9 (Headlines)": 9},
+    },
+]
+
+PIPELINE_STEPS = [
+    # ── Phase 1 ──────────────────────────────────────────────────────────────
+    {
+        "step": 1, "phase": 1, "id": "kw", "icon": "🔍", "agent": "Agent 1",
+        "label": "Keyword Research",
+        "description": "Identify 5–10 keywords, prioritize by volume/competition/intent, map to content sections.",
         "system_prompt": (
             "You are a Professional SEO Keyword Research Specialist.\n\n"
             "Output exactly these sections:\n\n"
             "## PRIMARY KEYWORDS\n"
             "| Keyword | Volume | Difficulty | Intent | Placement |\n"
-            "|---------|--------|------------|--------|-----------||\n"
-            "(8–10 rows. Estimate volume. Difficulty: Easy/Medium/Hard. "
+            "|---------|--------|------------|--------|----------|\n"
+            "(5–10 rows. Estimate volume. Difficulty: Easy/Medium/Hard. "
             "Intent: Informational/Navigational/Transactional/Commercial. "
             "Placement: Title/H2/Body/Meta)\n\n"
-            "## LSI & RELATED KEYWORDS\n"
-            "(3–5 semantic terms)\n\n"
+            "## LSI & RELATED KEYWORDS\n(3–5 semantic supporting terms)\n\n"
             "## COMPETITOR GAP ANALYSIS\n"
-            "Content competitors have: ...\n"
-            "Content MISSING from all competitors: ...\n"
-            "Content opportunity: ...\n\n"
+            "Content competitors have: ...\nContent MISSING from all competitors: ...\nContent opportunity: ...\n\n"
             "## KEYWORD PLACEMENT STRATEGY\n"
-            "- Title: ...\n- H2s: ...\n- Meta Description: ...\n- Body: ..."
+            "- Title: ...\n- H2s: ...\n- Meta Description: ...\n- Body: ...\n\n"
+            "**Quality Gate check:** Are these keywords relevant, searchable, and achievable for the domain?"
         ),
         "fields": [
-            {"name": "topic",    "label": "Topic / Niche", "type": "text",
-             "placeholder": "e.g. AI blog writing tools"},
+            {"name": "topic",    "label": "Blog Topic", "type": "text",
+             "placeholder": "e.g. AI blog writing tools, content marketing for SaaS"},
             {"name": "audience", "label": "Target Audience", "type": "textarea", "rows": 2,
-             "placeholder": "e.g. solo bloggers; pain point: can't rank; goal: organic traffic"},
+             "placeholder": "e.g. marketing managers, 3–5 years experience, pain point: can't rank"},
             {"name": "goal",     "label": "Blog Goal", "type": "select",
              "options": [("SEO ranking","SEO ranking"),("Lead generation","Lead generation"),
                          ("Brand awareness","Brand awareness"),("Engagement","Engagement")]},
-            {"name": "existing", "label": "Existing articles on this topic?", "type": "select",
-             "options": [("No — discover from scratch","No — discover from scratch"),
-                         ("Yes — build on existing","Yes — build on existing")]},
+            {"name": "keywords", "label": "Target Keywords (optional)", "type": "text",
+             "placeholder": "Leave blank to discover from scratch, or list known keywords",
+             "required": False},
+            {"name": "content_type", "label": "Content Type", "type": "select",
+             "options": [("guide","Guide / Pillar"),("how-to","How-To / Tutorial"),
+                         ("listicle","Listicle"),("opinion","Opinion / POV"),
+                         ("case-study","Case Study")]},
         ],
-        "prompt": "Run keyword research.\n\nTopic: {topic}\nAudience: {audience}\nGoal: {goal}\nExisting content: {existing}",
+        "prompt": "Run keyword research.\n\nTopic: {topic}\nAudience: {audience}\nGoal: {goal}\nContent type: {content_type}\nTarget keywords (if known): {keywords}",
         "output_key": "kw_output",
-        "saves": ["topic", "audience", "goal"],
+        "saves": ["topic", "audience", "goal", "content_type"],
     },
     {
-        "step": 2, "id": "brief", "icon": "📋", "agent": "Agent 2", "label": "Content Brief",
+        "step": 2, "phase": 1, "id": "brief", "icon": "📋", "agent": "Agent 2",
+        "label": "Content Brief",
         "description": "Article angle, competitor analysis, H1→H2→H3 outline, key messages, assets, tone guide.",
         "system_prompt": (
             "You are a Professional Content Strategist & Editorial Director.\n\n"
             "Create a comprehensive content brief with these sections:\n\n"
             "## CONTENT BRIEF: [TOPIC]\n\n"
             "### Article Angle\nUnique perspective, hook, reason this article should exist.\n\n"
-            "### Competitor Analysis\n3–5 similar articles: what they do well, what questions they miss, the content gap.\n\n"
-            "### Content Outline\nDetailed H1 → H2 → H3 hierarchy with word counts per section "
-            "and what type of content goes there (explanation/data/example/story).\n\n"
+            "### Competitor Analysis\n3–5 similar articles: what they do well, what questions they miss, the content gap to fill.\n\n"
+            "### Content Outline\nH1 → H2 → H3 hierarchy with word counts per section "
+            "and content type per section (explanation/data/example/story).\n\n"
             "### Key Messages\n3–5 main takeaways the reader should remember.\n\n"
             "### Reader Profile\n- Expertise level\n- What brought them here\n- Desired outcome\n\n"
             "### Required Assets\nData/stats (with sources), examples, case studies, tools/resources.\n\n"
-            "### Tone & Style Guide\nSentence length, jargon level, personal stories (yes/no), formatting."
-        ),
-        "fields": [
-            {"name": "topic",    "label": "Topic", "type": "text",
-             "placeholder": "Auto-filled from Step 1", "state_key": "topic"},
-            {"name": "keywords", "label": "Keywords (from Step 1)", "type": "textarea", "rows": 4,
-             "placeholder": "Auto-filled from Step 1 output", "state_key": "kw_output"},
-            {"name": "audience", "label": "Target Audience", "type": "textarea", "rows": 2,
-             "placeholder": "Auto-filled from Step 1", "state_key": "audience"},
-            {"name": "tone",     "label": "Tone", "type": "select",
-             "options": [("Professional","Professional"),("Casual","Casual"),
-                         ("Expert","Expert"),("Accessible","Accessible"),("Mixed","Mixed")]},
-            {"name": "word_count","label": "Target Word Count", "type": "select",
-             "options": [("1500","1,500"),("2000","2,000"),("2500","2,500"),("3500","3,500+")]},
-        ],
-        "prompt": "Create a content brief.\n\nTopic: {topic}\nKeywords: {keywords}\nAudience: {audience}\nTone: {tone}\nWord count: {word_count}",
-        "output_key": "brief_output",
-        "saves": [],
-    },
-    {
-        "step": 3, "id": "write", "icon": "✍️", "agent": "Agent 3", "label": "AI-Proof First Draft",
-        "description": "Write an authentic first draft — varied sentences, contractions, examples, no AI tells.",
-        "system_prompt": (
-            "You are an Expert Freelance Content Writer. Write a first draft that reads as genuinely human.\n\n"
-            "Rules:\n"
-            "1. AUTHENTICITY — use personal observations, stories, examples. Write like explaining to a friend.\n"
-            "2. NATURAL VOICE — vary sentence length dramatically. Short. Punchy. Then longer winding sentences. Use contractions.\n"
-            "3. HOOK — start with a question or relatable statement. Never 'In this article we will explore…'\n"
-            "4. BANNED WORDS — never use: delve, tapestry, testament, crucial, leverage, utilize, seamlessly, "
-            "robust, comprehensive, Moreover, Furthermore, In conclusion.\n"
-            "5. EVIDENCE — include data/statistics from the brief, cite examples.\n\n"
-            "Structure:\n"
-            "- Hook opening (don't announce what you'll cover — just start)\n"
-            "- Key Takeaways box near top (3–5 bullets)\n"
-            "- At least 3 real examples or mini-stories per major section\n"
-            "- Bold key takeaways inline\n"
-            "- Strong conclusion that ties back to the intro\n"
-            "- FAQ section with 3–5 real questions"
+            "### Tone & Style Guide\nSentence length, jargon level, personal stories yes/no, formatting.\n\n"
+            "**Quality Gate check:** Does this brief clearly answer 'why should this article exist?'"
         ),
         "fields": [
             {"name": "topic",      "label": "Topic", "type": "text",
              "placeholder": "Auto-filled from Step 1", "state_key": "topic"},
+            {"name": "keywords",   "label": "Keywords (from Step 1)", "type": "textarea", "rows": 4,
+             "placeholder": "Auto-filled from Step 1 output", "state_key": "kw_output"},
+            {"name": "audience",   "label": "Target Audience", "type": "textarea", "rows": 2,
+             "placeholder": "Auto-filled from Step 1", "state_key": "audience"},
+            {"name": "tone",       "label": "Tone", "type": "select",
+             "options": [("Professional","Professional"),("Conversational","Conversational"),
+                         ("Expert","Expert"),("Accessible","Accessible")]},
+            {"name": "word_count", "label": "Target Word Count", "type": "select",
+             "options": [("1000","Short — ~1,000 words"),("1500","Medium — ~1,500 words"),
+                         ("2000","Long — ~2,000 words"),("2500","Long-form — 2,500+")]},
+        ],
+        "prompt": "Create a content brief.\n\nTopic: {topic}\nKeywords: {keywords}\nAudience: {audience}\nTone: {tone}\nWord count: {word_count}",
+        "output_key": "brief_output",
+        "saves": ["word_count", "tone"],
+    },
+
+    # ── Phase 2 ──────────────────────────────────────────────────────────────
+    {
+        "step": 3, "phase": 2, "id": "outline", "icon": "📐", "agent": "Agent 3",
+        "label": "Outline Optimizer",
+        "description": "Refine the brief's outline — add subheadings, word count targets, transition notes, and data placement markers.",
+        "system_prompt": (
+            "You are a Content Structure Specialist. Refine the given outline into a publication-ready structure.\n\n"
+            "1. Add subheadings that answer real user questions (PAA-style: 'How does X work?', 'What is the difference between X and Y?')\n"
+            "2. Assign word count targets per section (total must match brief's target)\n"
+            "3. Add transition notes — one sentence showing how each section connects to the next\n"
+            "4. Mark data/example placement — for each section note what type of data or example to insert\n"
+            "5. Ensure narrative flow — problem → insight → solution → action\n\n"
+            "Output:\n## ENHANCED OUTLINE: [Title]\n**Total target:** X words | **Sections:** N\n\n"
+            "For each section:\n### H2: [Section Title] (~X words)\n"
+            "**Purpose:** [what this accomplishes]\n"
+            "- H3: [Subsection] (~X words) — [type]\n"
+            "- Data needed: [description]\n"
+            "- **Transition:** [one sentence to next section]\n\n"
+            "End with:\n**Story arc:** [1-sentence summary of the narrative]\n\n"
+            "**Quality Gate:** Does this outline tell a complete story? Could any section be cut without losing meaning?"
+        ),
+        "fields": [
+            {"name": "brief",      "label": "Content Brief (from Step 2)", "type": "textarea", "rows": 8,
+             "placeholder": "Auto-filled from Step 2 output", "state_key": "brief_output"},
             {"name": "keywords",   "label": "Keywords", "type": "textarea", "rows": 3,
              "placeholder": "Auto-filled from Step 1", "state_key": "kw_output"},
-            {"name": "brief",      "label": "Content Brief (from Step 2)", "type": "textarea", "rows": 6,
-             "placeholder": "Auto-filled from Step 2 output", "state_key": "brief_output"},
+            {"name": "word_count", "label": "Target Word Count", "type": "text",
+             "placeholder": "Auto-filled from Step 2", "state_key": "word_count"},
+        ],
+        "prompt": "Optimize this outline.\n\nTarget word count: {word_count}\nKeywords: {keywords}\n\nContent Brief:\n---\n{brief}",
+        "output_key": "outline_output",
+        "saves": [],
+    },
+    {
+        "step": 4, "phase": 2, "id": "write", "icon": "✍️", "agent": "Agent 4",
+        "label": "AI-Proof First Draft",
+        "description": "Write an authentic first draft — varied sentences, contractions, storytelling, no AI tells.",
+        "system_prompt": (
+            "You are an Expert Freelance Content Writer with deep expertise in the topic.\n"
+            "Write a first draft that reads as genuinely human — not an AI essay.\n\n"
+            "1. AUTHENTICITY — use personal observations, stories, concrete examples. Write like explaining to a friend.\n"
+            "2. NATURAL VOICE — vary sentence length dramatically. Short. Punchy. "
+            "Then longer winding sentences that zigzag through a point before arriving. Use contractions.\n"
+            "3. HOOK — start with a question or relatable statement. NEVER 'In this article we will explore…'\n"
+            "4. PERSONALITY — show conviction. Have opinions. Don't hedge everything.\n"
+            "5. BANNED WORDS — never use: delve, tapestry, testament, crucial, leverage, utilize, seamlessly, "
+            "robust, comprehensive, Moreover, Furthermore, In conclusion.\n"
+            "6. EVIDENCE — include data/statistics from the outline, cite examples concretely.\n"
+            "7. STRUCTURE — follow the enhanced outline. Include Key Takeaways box near top. "
+            "At least 3 real examples per major section. FAQ section at end.\n\n"
+            "**Quality Gate:** Read your draft aloud. Does it sound like a knowledgeable person talking, or an AI generating text?"
+        ),
+        "fields": [
+            {"name": "topic",      "label": "Topic", "type": "text",
+             "placeholder": "Auto-filled from Step 1", "state_key": "topic"},
+            {"name": "outline",    "label": "Enhanced Outline (from Step 3)", "type": "textarea", "rows": 8,
+             "placeholder": "Auto-filled from Step 3 output", "state_key": "outline_output",
+             "fallback_key": "brief_output"},
             {"name": "expertise",  "label": "Author Expertise / POV", "type": "textarea", "rows": 2,
              "placeholder": "e.g. 8-year SEO consultant, ran 200+ content audits"},
-            {"name": "word_count", "label": "Target Word Count", "type": "select",
-             "options": [("1500","1,500"),("2000","2,000"),("2500","2,500"),("3500","3,500+")]},
+            {"name": "word_count", "label": "Target Word Count", "type": "text",
+             "placeholder": "Auto-filled from Step 2", "state_key": "word_count"},
+            {"name": "tone",       "label": "Tone", "type": "text",
+             "placeholder": "Auto-filled from Step 2", "state_key": "tone"},
         ],
-        "prompt": "Write a human-sounding first draft.\n\nTopic: {topic}\nKeywords: {keywords}\nBrief: {brief}\nAuthor expertise: {expertise}\nTarget: {word_count} words",
+        "prompt": "Write an authentic first draft.\n\nTopic: {topic}\nTone: {tone}\nTarget: {word_count} words\nAuthor expertise: {expertise}\n\nOutline:\n---\n{outline}",
         "output_key": "draft_v1",
         "saves": [],
     },
     {
-        "step": 4, "id": "seo-opt", "icon": "⚡", "agent": "Agent 4", "label": "SEO Optimizer",
-        "description": "Keyword integration, title/meta, CTAs, link suggestions, readability score.",
+        "step": 5, "phase": 2, "id": "seo-opt", "icon": "⚡", "agent": "Agent 5",
+        "label": "SEO Optimizer",
+        "description": "Keyword integration, title/meta, CTAs, internal/external links, readability.",
         "system_prompt": (
             "You are an Expert SEO Content Optimizer.\n\n"
             "1. TITLE — include primary keyword, under 60 chars, compelling\n"
             "2. META DESCRIPTION — 150–160 chars, primary keyword + benefit\n"
-            "3. KEYWORD INTEGRATION — primary keyword in first paragraph, ≥2 H2s, body at 0.5–1.5% density. Natural only.\n"
-            "4. STRUCTURE — descriptive H2s/H3s, paragraphs 2–3 sentences, bullet lists, bold key terms\n"
-            "5. LINKS — suggest 3–5 internal links (anchor text + placement), 3–5 external authority links\n"
-            "6. CTAs — 3 CTAs: after intro (soft), mid-content (value-driven), conclusion (main)\n"
-            "7. READABILITY — Flesch 60+ target, active voice\n\n"
-            "Output:\n## OPTIMIZED BLOG POST\n[Full optimized draft]\n\n"
+            "3. KEYWORD INTEGRATION — primary keyword in: first paragraph (1×), ≥2 H2s, body at 0.5–1.5% density. NATURAL only.\n"
+            "4. INTRO — keyword + benefit statement in first 100 words\n"
+            "5. STRUCTURE — short paragraphs (2–3 sentences), bullets for lists, bold key terms\n"
+            "6. LINKS — suggest 3–5 internal links (anchor text + placement), 3–5 external authority links\n"
+            "7. CTAs — 3 CTAs: after intro (soft), mid-content (value-driven), conclusion (main)\n"
+            "8. READABILITY — Flesch 60+ target, active voice\n\n"
+            "Output the full optimized draft, then:\n"
             "### SEO METRICS\n- Title: [title] (X chars)\n- Meta: [meta] (X chars)\n"
-            "- Keyword density: X%\n- Readability: ~X\n- CTAs: X\n\n"
-            "### LINK SUGGESTIONS\nInternal: ...\nExternal: ..."
+            "- Keyword density: X%\n- Readability: ~X Flesch\n- CTAs: X\n\n"
+            "### LINK SUGGESTIONS\nInternal: ...\nExternal: ...\n\n"
+            "**Quality Gate:** Is keyword density 0.5–1.5%? Does every CTA feel natural and useful?"
         ),
         "fields": [
-            {"name": "draft",           "label": "Draft to Optimize (from Step 3)", "type": "textarea", "rows": 10,
-             "placeholder": "Auto-filled from Step 3 output", "state_key": "draft_v1"},
+            {"name": "draft",           "label": "First Draft (from Step 4)", "type": "textarea", "rows": 10,
+             "placeholder": "Auto-filled from Step 4 output", "state_key": "draft_v1"},
             {"name": "keywords",        "label": "All Target Keywords", "type": "textarea", "rows": 3,
              "placeholder": "Auto-filled from Step 1", "state_key": "kw_output"},
             {"name": "primary_keyword", "label": "Primary Keyword", "type": "text",
@@ -1426,8 +1503,11 @@ PIPELINE_STEPS = [
         "output_key": "draft_seo",
         "saves": ["primary_keyword"],
     },
+
+    # ── Phase 3 ──────────────────────────────────────────────────────────────
     {
-        "step": 5, "id": "factcheck", "icon": "🔬", "agent": "Agent 5", "label": "Fact Check",
+        "step": 6, "phase": 3, "id": "factcheck", "icon": "🔬", "agent": "Agent 6",
+        "label": "Fact Check",
         "description": "Verify every factual claim, flag unsupported stats, check logical consistency.",
         "system_prompt": (
             "You are a Professional Fact-Checker & Content Auditor.\n\n"
@@ -1435,13 +1515,15 @@ PIPELINE_STEPS = [
             "2. VERIFY ACCURACY — check dates, names, numbers; flag anything uncertain\n"
             "3. CHECK SOURCES — do claims have citations? Are sources credible and current?\n"
             "4. FLAG UNSUPPORTED CLAIMS — no source = flag it; suggest rewording as opinion if unverifiable\n"
-            "5. LOGICAL CONSISTENCY — do claims contradict each other?\n"
+            "5. LOGICAL CONSISTENCY — do claims contradict each other? Cause-effect relationships sound?\n"
             "6. RED FLAGS — 'Everyone agrees…', 'Studies show…', outdated stats, conflicting figures\n\n"
-            "Output:\n## FACT-CHECK REPORT\n\n### VERIFIED CLAIMS ✓\n- [Claim] — Source: [URL or publication]\n\n"
-            "### FLAGGED CLAIMS ⚠️\n- [Claim] — Issue: [what's wrong]\n  Fix: [how to verify or reword]\n\n"
+            "Output:\n## FACT-CHECK REPORT\n\n"
+            "### VERIFIED CLAIMS ✓\n- [Claim] — Source: [URL or publication]\n\n"
+            "### FLAGGED CLAIMS ⚠️\n- [Claim] — Issue: [what's wrong] — Fix: [how to verify]\n\n"
             "### UNSUPPORTED CLAIMS ❌\n- [Claim] — Add [source] or reword as opinion\n\n"
             "### QUALITY ISSUES\n[Vague attributions, outdated info, logical gaps]\n\n"
-            "### OVERALL ASSESSMENT + RECOMMENDATIONS"
+            "### OVERALL ASSESSMENT + RECOMMENDATIONS\n\n"
+            "**Quality Gate:** Are there any false or unverifiable claims? Is every stat attributed?"
         ),
         "fields": [
             {"name": "draft", "label": "Draft to Fact-Check", "type": "textarea", "rows": 10,
@@ -1455,66 +1537,72 @@ PIPELINE_STEPS = [
         "saves": [],
     },
     {
-        "step": 6, "id": "citations", "icon": "🔐", "agent": "Agent 6", "label": "Citations & AI Audit",
-        "description": "Check attribution and detect AI patterns: em-dashes, rule of three, vague sourcing.",
+        "step": 7, "phase": 3, "id": "citations", "icon": "🔐", "agent": "Agent 7",
+        "label": "GEO / AI Citations Audit",
+        "description": "Verify attribution, check AI detector patterns, ensure source diversity and original analysis.",
         "system_prompt": (
-            "You are an Expert Citations Auditor & AI Detection Specialist.\n\n"
-            "1. CITATION AUDIT — are all quotes attributed? are all stats sourced? are sources credible?\n"
+            "You are an Expert Citations Auditor & AI Detection Specialist (GEO/AEO focus).\n\n"
+            "1. CITATION AUDIT — all quotes attributed? all stats sourced? sources credible? citation format correct?\n"
             "2. AI DETECTION CHECK — scan for:\n"
-            "   ✗ Excessive em-dashes\n"
-            "   ✗ Rule of three (lists of exactly 3 in every paragraph)\n"
-            "   ✗ Vague attributions ('Research shows…', 'Studies indicate…')\n"
+            "   ✗ Excessive em-dashes (—)\n"
+            "   ✗ Rule of three (exactly 3 items in every paragraph)\n"
+            "   ✗ Vague attributions ('Research shows…', 'Studies indicate…', 'Experts say…')\n"
+            "   ✗ Inflated symbolism / overwrought metaphors\n"
             "   ✗ Promotional language ('must understand', 'critical to know')\n"
             "   ✗ Repetitive transitions (Moreover, Furthermore used repeatedly)\n"
-            "   ✗ Missing contractions\n"
+            "   ✗ Missing contractions — too formal\n"
             "   Rate AI risk: Low / Medium / High\n"
-            "3. AUTHENTICITY SCORE — X/10, with breakdown\n"
-            "4. SOURCE DIVERSITY — 5+ publications or relying on 1–2?\n\n"
+            "3. AUTHENTICITY — does original analysis/perspective come through? Real examples?\n"
+            "4. SOURCE DIVERSITY — 5+ different publications, or relying on 1–2?\n"
+            "5. AI CITATION READINESS (GEO) — would Perplexity, ChatGPT, or Claude cite this? "
+            "Add citation capsules if missing: short, self-contained answer blocks.\n\n"
             "Output:\n## CITATIONS & AI AUDIT REPORT\n\n"
             "### CITATION CHECKLIST\n✓/✗ ...\n\n### CITATIONS NEEDED\n1. ...\n\n"
             "### AI DETECTION RISK: [LOW/MEDIUM/HIGH]\nFactors found:\n- ...\n\n"
-            "### AUTHENTICITY SCORE: X/10\n\n### RECOMMENDATIONS"
+            "### AUTHENTICITY SCORE: X/10\n\n"
+            "### GEO CITATION READINESS\n\n### RECOMMENDATIONS\n\n"
+            "**Quality Gate:** Does this pass GPTZero, Originality.ai, and similar detectors? Are citations diverse?"
         ),
         "fields": [
             {"name": "draft", "label": "Draft to Audit", "type": "textarea", "rows": 10,
              "placeholder": "Auto-filled from latest draft", "state_key": "draft_seo",
              "fallback_key": "draft_v1"},
         ],
-        "prompt": "Run a citations and AI detection audit:\n\n---\n{draft}",
+        "prompt": "Run a GEO/AI citations audit:\n\n---\n{draft}",
         "output_key": "citations_output",
         "saves": [],
     },
+
+    # ── Phase 4 ──────────────────────────────────────────────────────────────
     {
-        "step": 7, "id": "humanize", "icon": "🧬", "agent": "Agent 7", "label": "Content Humanizer",
-        "description": "Remove AI patterns, add authentic voice, vary sentence structure, add contractions.",
+        "step": 8, "phase": 4, "id": "humanize", "icon": "🧬", "agent": "Agent 8",
+        "label": "Content Humanizer",
+        "description": "Remove AI patterns, inject authentic voice, vary sentence structure, add contractions.",
         "system_prompt": (
             "You are a Content Humanization Specialist.\n\n"
             "REMOVE AI PATTERNS:\n"
             "1. Em-dashes (—) — replace with periods, commas, or restructure\n"
             "2. Rule of three — don't list exactly 3 things in every paragraph\n"
-            "3. Vague attributions: 'Research shows…' → 'A 2024 study found…'; 'It's important to…' → 'You need to…'\n"
-            "4. Promotional words: remove 'must', 'critical', 'essential', 'crucial', 'leverage', 'utilize'\n"
+            "3. Vague attributions → specific ones: 'Research shows…' → 'A 2025 MIT study found…'\n"
+            "4. Promotional words: remove 'must', 'critical', 'essential', 'crucial'\n"
             "5. Repetitive transitions — vary how you move between ideas\n"
             "6. ADD contractions: it's, don't, I'm, we're, you'll, can't\n\n"
             "ADD AUTHENTIC ELEMENTS:\n"
             "1. Personal examples: 'When I…', 'I've seen…', 'I remember…'\n"
             "2. Conversational asides in parentheses\n"
             "3. Questions to reader: 'Have you…?', 'What if…?'\n"
-            "4. Sentence variety:\n"
-            "   - Short. Punchy.\n"
-            "   - Medium length that flows with detail.\n"
-            "   - Longer sentences that wind through a thought before landing somewhere.\n\n"
+            "4. Sentence variety — short punchy sentences mixed with longer winding ones\n\n"
             "Output the full humanized text, then after --- separator:\n"
             "### CHANGES MADE:\n"
             "- Em-dashes removed: X\n- Contractions added: X\n"
-            "- Vague attributions replaced: X\n- Personal examples added: X\n"
-            "- Authenticity: X/10"
+            "- Vague attributions replaced: X\n- Personal examples added: X\n- Authenticity: X/10\n\n"
+            "**Quality Gate:** Read a random paragraph aloud. Does it sound like a real person talking?"
         ),
         "fields": [
-            {"name": "draft",      "label": "Draft to Humanize", "type": "textarea", "rows": 10,
+            {"name": "draft",     "label": "Draft to Humanize", "type": "textarea", "rows": 10,
              "placeholder": "Auto-filled from latest draft", "state_key": "draft_seo",
              "fallback_key": "draft_v1"},
-            {"name": "intensity",  "label": "Intensity", "type": "select",
+            {"name": "intensity", "label": "Intensity", "type": "select",
              "options": [("moderate","Moderate — restructure + vocab + voice (recommended)"),
                          ("light","Light — vocabulary swap + sentence variation only"),
                          ("heavy","Heavy — full rewrite, strong authorial voice")]},
@@ -1524,23 +1612,24 @@ PIPELINE_STEPS = [
         "saves": [],
     },
     {
-        "step": 8, "id": "headlines", "icon": "🧪", "agent": "Agent 8", "label": "A/B Headlines",
+        "step": 9, "phase": 4, "id": "headlines", "icon": "🧪", "agent": "Agent 9",
+        "label": "A/B Headlines",
         "description": "5 headline variants (curiosity, benefit, SEO, how-to, contrarian) with CTR scores.",
         "system_prompt": (
-            "You are an Expert Headline Writer & CTR Specialist. Create 5 headline variations.\n\n"
-            "For each of these 5 types, write: the title (under 60 chars), a meta description (150–160 chars), "
-            "2–3 sentences on why it works, CTR potential (Low/Medium/High), best audience segment.\n\n"
+            "You are an Expert Headline Writer & CTR Specialist.\n\n"
+            "Create 5 headline variations. For each, write: title (under 60 chars), "
+            "meta description (150–160 chars), 2–3 sentences on why it works, "
+            "CTR potential (Low/Medium/High), and best audience segment.\n\n"
             "Types:\n"
             "1. CURIOSITY/HOOK — 'Why [Expected thing] Is [Unexpected thing]'\n"
             "2. BENEFIT-DRIVEN — 'How to [Get Benefit] in [Timeframe]'\n"
             "3. SEO-OPTIMIZED — '[Keyword]: [Benefit]'\n"
-            "4. HOW-TO — 'How to [Accomplish Goal] in X Steps'\n"
+            "4. HOW-TO — 'How to [Goal] in X Steps'\n"
             "5. CONTRARIAN — 'Why [Common Belief] Is Actually [Opposite]'\n\n"
-            "Then:\n### RANKING & RECOMMENDATION\n"
-            "[Rank all 5 highest to lowest CTR]\n"
+            "Then:\n### RANKING & RECOMMENDATION\n[Rank highest to lowest CTR]\n"
             "**My Recommendation:** Option X because [reason]\n\n"
-            "### A/B TESTING STRATEGY\n"
-            "- Test Option 1 vs Option 2 first — run 14 days — measure CTR"
+            "### A/B TESTING STRATEGY\nTest top 2 options for 14 days, measure CTR.\n\n"
+            "**Quality Gate:** Does each headline trigger genuine curiosity or a click? Does it match search intent?"
         ),
         "fields": [
             {"name": "topic",    "label": "Topic", "type": "text",
@@ -1550,117 +1639,173 @@ PIPELINE_STEPS = [
              "fallback_key": "draft_seo"},
             {"name": "audience", "label": "Audience", "type": "text",
              "placeholder": "Auto-filled from Step 1", "state_key": "audience"},
-            {"name": "goal",     "label": "Goal", "type": "select",
-             "options": [("SEO / Clicks","SEO / Clicks"),("Leads","Lead generation"),
-                         ("Engagement","Engagement / Shares"),("Brand awareness","Brand awareness")]},
+            {"name": "goal",     "label": "Goal", "type": "text",
+             "placeholder": "Auto-filled from Step 1", "state_key": "goal"},
         ],
         "prompt": "Create 5 A/B headline variants.\n\nTopic: {topic}\nAudience: {audience}\nGoal: {goal}\n\nArticle:\n---\n{article}",
         "output_key": "headlines_output",
         "saves": [],
     },
     {
-        "step": 9, "id": "polish", "icon": "✨", "agent": "Agent 9", "label": "Polish & Finalize",
-        "description": "Stronger verbs, smooth transitions, pacing, tone consistency, choose best headline.",
+        "step": 10, "phase": 4, "id": "polish", "icon": "✨", "agent": "Agent 10",
+        "label": "Rewrite & Optimize",
+        "description": "Final polish — stronger verbs, smooth transitions, pacing, tone consistency, select best headline.",
         "system_prompt": (
             "You are a Professional Editor & Content Optimizer.\n\n"
-            "1. POLISH SENTENCES — strong action verbs, no redundancy, active voice\n"
-            "2. FIX TRANSITIONS — smooth paragraph flow, remove abrupt jumps\n"
-            "3. PARAGRAPH PACING — alternate short/long, max 5 sentences per paragraph\n"
-            "4. POWER WORDS — 'craft/build/create' not 'make'; 'guide/enable' not 'help'; 'gain/unlock' not 'get'\n"
-            "5. TONE CONSISTENCY — no jarring formality shifts\n"
+            "1. CLARITY & CONCISENESS — remove redundancy, say it once and say it well\n"
+            "2. STRONG VERBS — no weak verbs. 'craft/build/create' not 'make'; 'guide/enable' not 'help'\n"
+            "3. TRANSITIONS — smooth paragraph flow, remove abrupt jumps, logical progression\n"
+            "4. PACING — alternate short/long paragraphs, max 5 sentences per paragraph\n"
+            "5. TONE CONSISTENCY — no jarring formality shifts, consistent reader relationship\n"
             "6. READABILITY — Flesch 70+ target\n"
-            "7. SELECT BEST HEADLINE — compare all 5 headline options, choose highest-CTR one that matches content\n\n"
+            "7. POWER WORDS — action verbs, specific language, vivid descriptions\n"
+            "8. SELECT BEST HEADLINE — pick the highest-CTR headline option that matches the content\n\n"
             "Output:\n## POLISHED FINAL DRAFT\n\n"
-            "### SELECTED HEADLINE\n**Headline:** ...\n**Meta Description:** ...\n**Why This One:** ...\n\n"
+            "### SELECTED HEADLINE\n**Headline:** ...\n**Meta Description:** ...\n**Why:** ...\n\n"
             "### FINAL ARTICLE\n[Complete polished text]\n\n"
-            "### POLISH CHANGES MADE\n"
-            "- Weak verbs improved: X\n- Passive voice converted: X\n"
-            "- Transitions improved: X\n- Readability: ~X\n- Word count: X"
+            "### CHANGES MADE\n- Weak verbs: X improved\n- Passive voice: X converted\n"
+            "- Readability: ~X Flesch\n- Word count: X\n\n"
+            "**Quality Gate:** Does every sentence earn its place? Does every paragraph have purpose?"
         ),
         "fields": [
-            {"name": "draft",      "label": "Draft to Polish", "type": "textarea", "rows": 10,
+            {"name": "draft",     "label": "Draft to Polish", "type": "textarea", "rows": 10,
              "placeholder": "Auto-filled from latest draft", "state_key": "draft_humanized",
              "fallback_key": "draft_seo"},
-            {"name": "headlines",  "label": "Headline Options (from Step 8)", "type": "textarea", "rows": 5,
-             "placeholder": "Auto-filled from Step 8 output", "state_key": "headlines_output"},
-            {"name": "word_count", "label": "Target Word Count", "type": "select",
-             "options": [("1500","1,500"),("2000","2,000"),("2500","2,500"),("3500","3,500+")]},
+            {"name": "headlines", "label": "Headline Options (from Step 9)", "type": "textarea", "rows": 5,
+             "placeholder": "Auto-filled from Step 9 output", "state_key": "headlines_output"},
         ],
-        "prompt": "Polish to final publication quality.\n\nTarget: {word_count} words\nHeadlines:\n{headlines}\n\n---\n{draft}",
+        "prompt": "Polish to final publication quality.\n\nHeadlines:\n{headlines}\n\n---DRAFT---\n{draft}",
         "output_key": "final_draft",
         "saves": [],
     },
+
+    # ── Phase 5 ──────────────────────────────────────────────────────────────
     {
-        "step": 10, "id": "seo-check", "icon": "✅", "agent": "Agent 10", "label": "SEO Check",
+        "step": 11, "phase": 5, "id": "seo-check", "icon": "✅", "agent": "Agent 11",
+        "label": "SEO Check",
         "description": "Full technical SEO checklist: title, meta, headings, density, links, readability, CTAs.",
         "system_prompt": (
             "You are an SEO Technical Auditor. Run a complete SEO checklist. Mark each ✓ Pass or ⚠️ Fix.\n\n"
-            "Check: title (50–60 chars, keyword present), meta (150–160 chars), "
-            "H1/H2/H3 hierarchy, keyword density (0.5–1.5%), keyword in first 100 words, "
-            "keyword in ≥2 H2s, readability (Flesch 60+), short paragraphs (2–4 sentences), "
-            "contractions present, active voice dominant, internal links (3–5), "
-            "external links (2–3), descriptive anchor text, CTAs (≥1), images have alt text.\n\n"
+            "Check: title (50–60 chars, keyword present, compelling), meta (150–160 chars, keyword + benefit), "
+            "H1 present with keyword, H2s descriptive (3–7 for 2,000-word post), H3s support H2s, "
+            "keyword in first 100 words, density 0.5–1.5%, keyword in ≥2 H2s, synonyms used, "
+            "Flesch 60+ (aim 70), short paragraphs, contractions present, active voice dominant, "
+            "internal links 3–5, external links 2–3, descriptive anchor text, CTAs ≥1 and action-oriented, "
+            "images have alt text.\n\n"
             "Output:\n## FINAL SEO SCORECARD\n"
-            "| Item | Status | Action |\n|------|--------|--------|\n[rows for each item]\n\n"
+            "| Item | Status | Action |\n|------|--------|--------|\n[row per item]\n\n"
             "## OVERALL STATUS: [✓ READY TO PUBLISH / ⚠️ FIX THESE ITEMS / ❌ NEEDS MAJOR REVISIONS]\n\n"
-            "## PRIORITY FIXES\n1. [Issue] — Fix: [how]\n\n"
-            "## SUGGESTED URL SLUG\n/[keyword]-[keyword]/"
+            "## PRIORITY FIXES\n1. [Issue] — Fix: [how]\n\n## SUGGESTED URL SLUG\n/[keyword]-[keyword]/\n\n"
+            "**Quality Gate:** Do all critical SEO items pass? Is the content genuinely ready to index?"
         ),
         "fields": [
             {"name": "article",         "label": "Final Article", "type": "textarea", "rows": 10,
-             "placeholder": "Auto-filled from Step 9 output", "state_key": "final_draft",
+             "placeholder": "Auto-filled from Step 10 output", "state_key": "final_draft",
              "fallback_key": "draft_humanized"},
             {"name": "primary_keyword", "label": "Primary Keyword", "type": "text",
-             "placeholder": "Auto-filled from Step 4", "state_key": "primary_keyword"},
+             "placeholder": "Auto-filled from Step 5", "state_key": "primary_keyword"},
             {"name": "headline",        "label": "Chosen Headline", "type": "text",
-             "placeholder": "Paste selected headline from Step 9"},
+             "placeholder": "Paste the selected headline from Step 10"},
         ],
-        "prompt": "Full SEO check.\n\nPrimary Keyword: {primary_keyword}\nHeadline: {headline}\n\n---\n{article}",
+        "prompt": "Full SEO technical check.\n\nPrimary Keyword: {primary_keyword}\nHeadline: {headline}\n\n---\n{article}",
         "output_key": "seo_report",
         "saves": [],
     },
     {
-        "step": 11, "id": "decay", "icon": "📉", "agent": "Agent 11", "label": "Decay Detector",
-        "description": "Flag time-sensitive claims, score evergreen potential, plan refresh timeline.",
+        "step": 12, "phase": 5, "id": "decay", "icon": "📉", "agent": "Agent 12",
+        "label": "Decay Detector",
+        "description": "Flag time-sensitive claims, assess evergreen score, plan refresh timeline.",
         "system_prompt": (
             "You are a Content Decay & Freshness Analyst.\n\n"
             "1. TIME-SENSITIVE CLAIMS — statements tied to years/dates, 'current' trends, "
             "statistics with dates, product versions, 'latest' references\n"
             "2. OUTDATED-RISK SECTIONS — tools, market analysis, evolving best practices\n"
             "3. EVERGREEN SCORE — rate 1–10 (1=outdated in 3 months, 10=timeless). Explain what pulls it down.\n"
-            "4. REFRESH TIMELINE — 30/60/90 days / 6 months / 12 months?\n"
-            "5. UPDATE-PRONE SECTIONS — which parts will need updating first?\n"
-            "6. REFRESH STRATEGY — how to stay fresh without major rewrites?\n\n"
+            "4. REFRESH TIMELINE — 30/60/90 days or 6/12 months?\n"
+            "5. UPDATE-PRONE SECTIONS — which parts need updating first?\n"
+            "6. REMEDIATION PLAN — how to stay fresh without major rewrites?\n\n"
             "Output:\n## CONTENT DECAY ANALYSIS\n\n### EVERGREEN SCORE: X/10\nWhy: ...\n\n"
-            "### TIME-SENSITIVE CLAIMS\n1. [Claim] — Risk: High/Medium/Low — Ages: [when] — Fix: [how]\n\n"
-            "### OUTDATED-RISK SECTIONS\n- [Section] — Risk: [what changes]\n\n"
-            "### REFRESH TIMELINE\n- First review: X days\n- Full audit: X days\n\n"
+            "### TIME-SENSITIVE CLAIMS\n1. [Claim] — Risk: H/M/L — Ages: [when] — Fix: [how]\n\n"
+            "### OUTDATED-RISK SECTIONS\n- [Section] — Risk: [what could change]\n\n"
+            "### REFRESH TIMELINE\n- First review: X days\n- Next audit: X days\n\n"
             "### MONITORING CHECKLIST\n- [Metric] — Check when: [condition]\n\n"
-            "### REFRESH STRATEGY + LONGEVITY SUMMARY"
+            "### REMEDIATION PLAN\n[Step-by-step]\n\n"
+            "**Quality Gate:** Is content evergreen or clearly dated with an update plan?"
         ),
         "fields": [
-            {"name": "article",       "label": "Final Article", "type": "textarea", "rows": 10,
-             "placeholder": "Auto-filled from Step 9 output", "state_key": "final_draft",
+            {"name": "article",      "label": "Final Article", "type": "textarea", "rows": 10,
+             "placeholder": "Auto-filled from Step 10 output", "state_key": "final_draft",
              "fallback_key": "draft_humanized"},
-            {"name": "topic",         "label": "Topic", "type": "text",
+            {"name": "topic",        "label": "Topic", "type": "text",
              "placeholder": "Auto-filled from Step 1", "state_key": "topic"},
-            {"name": "current_date",  "label": "Current Date", "type": "text",
+            {"name": "current_date", "label": "Current Date", "type": "text",
              "placeholder": "2026-05-16"},
         ],
         "prompt": "Analyze content decay.\n\nTopic: {topic}\nCurrent date: {current_date}\n\n---\n{article}",
         "output_key": "decay_report",
         "saves": [],
     },
+    {
+        "step": 13, "phase": 5, "id": "editorial", "icon": "📅", "agent": "Agent 13",
+        "label": "Editorial Calendar",
+        "description": "Publication timing, 30-day promo schedule, refresh cycle, A/B test plan, follow-up content.",
+        "system_prompt": (
+            "You are an Editorial Calendar Strategist.\n\n"
+            "1. PUBLICATION TIMING — optimal publish date/time based on topic, seasonality, and goal\n"
+            "2. 30-DAY PROMOTION SCHEDULE — platform-specific posts for first 30 days\n"
+            "3. SOCIAL MEDIA VARIANTS — draft 3 platform-native posts:\n"
+            "   - Twitter/X thread (8–12 tweets)\n"
+            "   - LinkedIn post (professional, 150–200 words)\n"
+            "   - Reddit post (which subreddit + native-feeling opening)\n"
+            "4. REFRESH CYCLE — 30/60/90-day and 12-month check-in plan\n"
+            "5. A/B TEST PLAN — headline test, CTA test, intro length test\n"
+            "6. FOLLOW-UP CONTENT — 3–5 related article ideas that create a topic cluster\n\n"
+            "Output:\n## EDITORIAL CALENDAR ENTRY\n\n"
+            "### PUBLICATION TIMING\n...\n\n"
+            "### 30-DAY PROMOTION SCHEDULE\n"
+            "| Day | Platform | Action |\n|-----|----------|--------|\n...\n\n"
+            "### SOCIAL MEDIA VARIANTS\n[Twitter/X thread, LinkedIn, Reddit]\n\n"
+            "### REFRESH CYCLE\n| Checkpoint | When | What to review |\n...\n\n"
+            "### A/B TEST PLAN\n...\n\n"
+            "### FOLLOW-UP CONTENT IDEAS\n1. ...\n2. ...\n3. ...\n\n"
+            "**Quality Gate:** Is there a clear plan for promotion and long-term content freshness?"
+        ),
+        "fields": [
+            {"name": "topic",    "label": "Topic", "type": "text",
+             "placeholder": "Auto-filled from Step 1", "state_key": "topic"},
+            {"name": "headline", "label": "Final Headline", "type": "text",
+             "placeholder": "Paste selected headline from Step 10"},
+            {"name": "goal",     "label": "Blog Goal", "type": "text",
+             "placeholder": "Auto-filled from Step 1", "state_key": "goal"},
+            {"name": "audience", "label": "Target Audience", "type": "text",
+             "placeholder": "Auto-filled from Step 1", "state_key": "audience"},
+            {"name": "draft",    "label": "Final Article", "type": "textarea", "rows": 5,
+             "placeholder": "Auto-filled from Step 10 output", "state_key": "final_draft",
+             "fallback_key": "draft_humanized"},
+        ],
+        "prompt": "Create editorial calendar and promotion strategy.\n\nTopic: {topic}\nHeadline: {headline}\nGoal: {goal}\nAudience: {audience}\n\nArticle:\n---\n{draft}",
+        "output_key": "calendar_output",
+        "saves": [],
+    },
 ]
 
 
 def _build_pipeline_page():
-    """Render the 11-agent pipeline page HTML."""
+    """Render the 13-agent, 6-phase orchestration pipeline page."""
 
-    # Sidebar nav
+    # ── Sidebar nav ──────────────────────────────────────────────────────────
     nav_items = ""
+    prev_phase = 0
     for s in PIPELINE_STEPS:
         n = s["step"]
+        ph = s["phase"]
+        if ph != prev_phase:
+            ph_data = PHASES[ph - 1]
+            nav_items += (
+                f'<div class="p-phase-header" style="border-left:3px solid {ph_data["color"]}">'
+                f'{ph_data["icon"]} Phase {ph}: {ph_data["label"]}</div>'
+            )
+            prev_phase = ph
         nav_items += (
             f'<div class="p-nav-item" id="p-nav-{n}" data-step="{n}" onclick="showStep({n})">'
             f'<span class="p-nav-num" id="p-nav-num-{n}">{n}</span>'
@@ -1668,52 +1813,94 @@ def _build_pipeline_page():
             f'<div class="p-nav-agent">{s["agent"]}</div></div>'
             f'<span class="p-nav-check" id="p-nav-check-{n}"></span></div>'
         )
+    # Phase 6 nav entry
+    nav_items += (
+        '<div class="p-phase-header" style="border-left:3px solid #3fb950">📦 Phase 6: Final Assembly</div>'
+        '<div class="p-nav-item" id="p-nav-14" data-step="14" onclick="showStep(14)">'
+        '<span class="p-nav-num" id="p-nav-num-14">6</span>'
+        '<div class="p-nav-info"><div class="p-nav-label">📦 Final Assembly</div>'
+        '<div class="p-nav-agent">6 Deliverables</div></div>'
+        '<span class="p-nav-check" id="p-nav-check-14"></span></div>'
+    )
 
-    # Step panels
+    # ── Phase quality gate panels ────────────────────────────────────────────
+    def gate_panel(ph_data):
+        ph = ph_data["phase"]
+        routes = "".join(
+            f'<option value="{step}">{label}</option>'
+            for label, step in ph_data["fail_routes"].items()
+        )
+        return (
+            f'<div class="phase-gate" id="gate-{ph}">'
+            f'<div class="gate-icon">🔍</div>'
+            f'<div class="gate-body">'
+            f'<div class="gate-title">Phase {ph} Quality Gate</div>'
+            f'<div class="gate-criteria">{ph_data["gate"]}</div>'
+            f'<div class="gate-actions">'
+            f'<button class="btn btn-primary btn-sm" onclick="passGate({ph})">✓ Pass — Next Phase</button>'
+            f'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+            f'<button class="btn btn-ghost btn-sm" style="color:var(--red)" '
+            f'onclick="failGate({ph})">✗ Fail — Route back to:</button>'
+            f'<select id="gate-route-{ph}" class="gate-select"><option value="">Select agent...</option>{routes}</select>'
+            f'</div></div></div></div>'
+        )
+
+    # ── Step panels ──────────────────────────────────────────────────────────
     panels = ""
+    last_phase = 0
     for s in PIPELINE_STEPS:
         n = s["step"]
-        next_s = PIPELINE_STEPS[n] if n < 11 else None
-        next_label = f'Next: {next_s["label"]} →' if next_s else "🎉 Pipeline Complete!"
+        ph = s["phase"]
+        ph_data = PHASES[ph - 1]
+        next_s = PIPELINE_STEPS[n] if n < 13 else None
+        next_label = f'Next: {next_s["label"]} →' if next_s else "Proceed to Phase 6 →"
 
-        # Build form fields
         fhtml = ""
         for f in s["fields"]:
-            label   = f["label"]
-            fname   = f["name"]
-            req     = f.get("required", True)
-            sk      = f.get("state_key", "")
-            fk      = f.get("fallback_key", "")
-            da      = (f' data-state-key="{sk}"' if sk else "") + (f' data-fallback-key="{fk}"' if fk else "")
-            badge   = ' <span class="auto-badge">auto</span>' if sk else ""
+            sk  = f.get("state_key", "")
+            fk  = f.get("fallback_key", "")
+            da  = (f' data-state-key="{sk}"' if sk else "") + (f' data-fallback-key="{fk}"' if fk else "")
+            badge = ' <span class="auto-badge">auto</span>' if sk else ""
+            req = f.get("required", True)
 
             if f["type"] == "text":
                 fhtml += (
-                    f'<div class="form-group"><label class="field-label">{label}{badge}</label>'
-                    f'<input type="text" name="{fname}" placeholder="{f.get("placeholder","")}"'
+                    f'<div class="form-group"><label class="field-label">{f["label"]}{badge}</label>'
+                    f'<input type="text" name="{f["name"]}" placeholder="{f.get("placeholder","")}"'
                     f'{da}{" required" if req else ""}></div>'
                 )
             elif f["type"] == "textarea":
                 rows = f.get("rows", 5)
                 fhtml += (
-                    f'<div class="form-group"><label class="field-label">{label}{badge}</label>'
-                    f'<textarea name="{fname}" rows="{rows}" placeholder="{f.get("placeholder","")}"'
+                    f'<div class="form-group"><label class="field-label">{f["label"]}{badge}</label>'
+                    f'<textarea name="{f["name"]}" rows="{rows}" placeholder="{f.get("placeholder","")}"'
                     f'{da}{" required" if req else ""}></textarea></div>'
                 )
             elif f["type"] == "select":
                 opts = "".join(f'<option value="{v}">{l}</option>' for v, l in f["options"])
                 fhtml += (
-                    f'<div class="form-group"><label class="field-label">{label}</label>'
-                    f'<select name="{fname}">{opts}</select></div>'
+                    f'<div class="form-group"><label class="field-label">{f["label"]}</label>'
+                    f'<select name="{f["name"]}">{opts}</select></div>'
                 )
 
+        # Phase header banner inside main area
+        phase_banner = ""
+        if ph != last_phase:
+            phase_banner = (
+                f'<div class="p-phase-banner" style="border-left:4px solid {ph_data["color"]}">'
+                f'{ph_data["icon"]} <strong>Phase {ph}: {ph_data["label"]}</strong>'
+                f'</div>'
+            )
+            last_phase = ph
+
         panels += f"""
-<div class="p-step" id="p-step-{n}" data-step="{n}">
+{phase_banner}
+<div class="p-step" id="p-step-{n}" data-step="{n}" data-output-key="{s['output_key']}">
   <div class="p-step-header">
     <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
-      <span class="p-agent-badge">{s["agent"]}</span>
+      <span class="p-agent-badge" style="border-color:rgba(88,166,255,.4)">{s["agent"]}</span>
       <span style="font-size:18px">{s["icon"]}</span>
-      <div style="min-width:0">
+      <div>
         <div class="p-step-title">{s["label"]}</div>
         <div class="p-step-desc">{s["description"]}</div>
       </div>
@@ -1737,10 +1924,10 @@ def _build_pipeline_page():
         <button class="btn btn-ghost btn-sm" id="p-copy-{n}" style="display:none"
                 onclick="copyStepOutput({n})">⎘ Copy</button>
         <button class="btn btn-ghost btn-sm" id="p-dl-{n}" style="display:none"
-                onclick="dlStep({n},'{s["id"]}')">⬇ Save</button>
+                onclick="dlStep({n},'{s["id"]}')">⬇ Save .md</button>
       </div>
       <div class="output-box empty" id="p-out-{n}">
-        <span>Run {s["agent"]} to see output here</span>
+        <span>Run {s["agent"]} to see output</span>
       </div>
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" id="p-next-{n}" style="display:none"
@@ -1750,50 +1937,150 @@ def _build_pipeline_page():
   </div>
 </div>"""
 
+        # Append gate panel at end of each phase
+        if n == ph_data["steps"][-1]:
+            panels += gate_panel(ph_data)
+
+    # ── Phase 6: Final Assembly ──────────────────────────────────────────────
+    panels += """
+<div class="p-phase-banner" style="border-left:4px solid #3fb950">📦 <strong>Phase 6: Final Assembly & Quality Assurance</strong></div>
+<div class="p-step" id="p-step-14" data-step="14" data-output-key="">
+  <div class="p-step-header">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="p-agent-badge" style="background:rgba(63,185,80,.15);border-color:rgba(63,185,80,.4);color:var(--green)">Phase 6</span>
+      <span style="font-size:18px">📦</span>
+      <div>
+        <div class="p-step-title">Final Assembly & QA</div>
+        <div class="p-step-desc">6 deliverables ready to publish. Download individually or all at once.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:16px">
+    <div class="grid g3" style="margin-bottom:12px">
+      <div class="card" style="cursor:pointer" onclick="dlDeliverable(1)">
+        <div style="font-size:20px;margin-bottom:4px">📄</div>
+        <div style="font-weight:600;font-size:13px">Blog Post</div>
+        <div style="font-size:11px;color:var(--muted)">Formatted, CMS-ready</div>
+        <div id="qa-1" style="margin-top:8px"></div>
+      </div>
+      <div class="card" style="cursor:pointer" onclick="dlDeliverable(2)">
+        <div style="font-size:20px;margin-bottom:4px">🏷️</div>
+        <div style="font-weight:600;font-size:13px">SEO Metadata</div>
+        <div style="font-size:11px;color:var(--muted)">Title, meta, keywords, slug</div>
+        <div id="qa-2" style="margin-top:8px"></div>
+      </div>
+      <div class="card" style="cursor:pointer" onclick="dlDeliverable(3)">
+        <div style="font-size:20px;margin-bottom:4px">📱</div>
+        <div style="font-weight:600;font-size:13px">Social Media</div>
+        <div style="font-size:11px;color:var(--muted)">3–5 platform variants</div>
+        <div id="qa-3" style="margin-top:8px"></div>
+      </div>
+      <div class="card" style="cursor:pointer" onclick="dlDeliverable(4)">
+        <div style="font-size:20px;margin-bottom:4px">🔗</div>
+        <div style="font-weight:600;font-size:13px">Internal Link Map</div>
+        <div style="font-size:11px;color:var(--muted)">From SEO optimizer</div>
+        <div id="qa-4" style="margin-top:8px"></div>
+      </div>
+      <div class="card" style="cursor:pointer" onclick="dlDeliverable(5)">
+        <div style="font-size:20px;margin-bottom:4px">📉</div>
+        <div style="font-weight:600;font-size:13px">Decay Report</div>
+        <div style="font-size:11px;color:var(--muted)">Freshness + refresh plan</div>
+        <div id="qa-5" style="margin-top:8px"></div>
+      </div>
+      <div class="card" style="cursor:pointer" onclick="dlDeliverable(6)">
+        <div style="font-size:20px;margin-bottom:4px">📝</div>
+        <div style="font-weight:600;font-size:13px">Editorial Notes</div>
+        <div style="font-size:11px;color:var(--muted)">Fact-check + citations summary</div>
+        <div id="qa-6" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <h3 style="margin-bottom:10px">Final Quality Gates</h3>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-size:12px" id="qa-gates">
+        <div>☐ <strong>Accuracy:</strong> All facts verified</div>
+        <div>☐ <strong>SEO:</strong> Technical requirements met</div>
+        <div>☐ <strong>Authenticity:</strong> Passes AI detection</div>
+        <div>☐ <strong>Readability:</strong> Logical flow, clear purpose</div>
+        <div>☐ <strong>Engagement:</strong> Strong hook, examples, CTA</div>
+        <div>☐ <strong>Freshness:</strong> Decay risks identified</div>
+        <div>☐ <strong>Optimization:</strong> Best headline selected</div>
+        <div>☐ <strong>Promotion:</strong> Editorial calendar ready</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="downloadAll()">⬇ Download All 6 Deliverables</button>
+      <button class="btn btn-secondary" onclick="checkAllGates()">✓ Run QA Checklist</button>
+    </div>
+  </div>
+</div>"""
+
+    # ── CSS ──────────────────────────────────────────────────────────────────
     css_pipeline = """
-.pipeline-layout{display:grid;grid-template-columns:260px 1fr;height:calc(100vh - 50px);overflow:hidden}
+.pipeline-layout{display:grid;grid-template-columns:270px 1fr;height:calc(100vh - 50px);overflow:hidden}
 .pipeline-sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
 .pipeline-sidebar-header{padding:14px;border-bottom:1px solid var(--border)}
-.p-nav{flex:1;overflow-y:auto;padding:8px 0}
-.p-nav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;transition:background .12s;border-left:2px solid transparent}
+.p-nav{flex:1;overflow-y:auto;padding:6px 0}
+.p-phase-header{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:10px 14px 4px;margin-top:4px}
+.p-nav-item{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;transition:background .12s;border-left:2px solid transparent}
 .p-nav-item:hover{background:var(--surface2)}
 .p-nav-item.active{background:rgba(88,166,255,.1);border-left-color:var(--accent)}
 .p-nav-item.done{border-left-color:var(--green)}
-.p-nav-num{width:22px;height:22px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--muted)}
+.p-nav-num{width:20px;height:20px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--muted)}
 .p-nav-item.active .p-nav-num{background:var(--accent);color:#0d1117;border-color:var(--accent)}
 .p-nav-item.done .p-nav-num{background:var(--green);color:#0d1117;border-color:var(--green)}
 .p-nav-info{flex:1;min-width:0}
-.p-nav-label{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-nav-label{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p-nav-agent{font-size:10px;color:var(--muted)}
-.p-nav-check{font-size:11px;color:var(--green)}
+.p-nav-check{font-size:10px;color:var(--green);font-weight:700}
 .pipeline-main{overflow-y:auto;background:var(--bg)}
-.p-step{display:none;padding:20px;max-width:1100px;margin:0 auto}
+.p-phase-banner{font-size:12px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border);color:var(--muted);display:none}
+.p-phase-banner.visible{display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:10}
+.p-step{display:none;padding:18px 20px;max-width:1100px}
 .p-step.active{display:block}
-.p-step-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)}
-.p-agent-badge{background:rgba(88,166,255,.15);color:var(--accent);border:1px solid rgba(88,166,255,.3);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;flex-shrink:0}
-.p-step-title{font-size:15px;font-weight:700}
-.p-step-desc{font-size:12px;color:var(--muted);margin-top:2px}
-.p-step-body{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
-.p-form-col{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}
+.p-step-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.p-agent-badge{background:rgba(88,166,255,.12);color:var(--accent);border:1px solid rgba(88,166,255,.3);border-radius:12px;padding:2px 9px;font-size:11px;font-weight:700;flex-shrink:0}
+.p-step-title{font-size:14px;font-weight:700}
+.p-step-desc{font-size:11px;color:var(--muted);margin-top:2px}
+.p-step-body{display:grid;grid-template-columns:320px 1fr;gap:14px;align-items:start}
+.p-form-col{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px}
 .p-output-col{display:flex;flex-direction:column}
-.p-run-status{font-size:12px;color:var(--muted)}
-.auto-badge{background:rgba(88,166,255,.12);color:var(--accent);border-radius:8px;padding:1px 6px;font-size:9px;font-weight:700;vertical-align:middle}
-.pipeline-sidebar-footer{padding:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
-@media(max-width:900px){.pipeline-layout{grid-template-columns:1fr;height:auto}.pipeline-sidebar{height:auto}.p-step-body{grid-template-columns:1fr}}
+.p-run-status{font-size:11px;color:var(--muted)}
+.auto-badge{background:rgba(88,166,255,.12);color:var(--accent);border-radius:8px;padding:1px 5px;font-size:9px;font-weight:700;vertical-align:middle}
+.pipeline-sidebar-footer{padding:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.phase-gate{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;margin:0 20px 14px;display:none}
+.phase-gate.visible{display:flex;gap:12px;align-items:flex-start}
+.gate-icon{font-size:20px;flex-shrink:0}
+.gate-body{flex:1}
+.gate-title{font-weight:700;font-size:13px;margin-bottom:4px}
+.gate-criteria{font-size:12px;color:var(--muted);margin-bottom:10px}
+.gate-actions{display:flex;flex-direction:column;gap:8px}
+.gate-select{background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:4px 8px;font-size:12px}
+.oneshot-card{margin:20px 20px 0;background:var(--surface);border:1px solid rgba(88,166,255,.4);border-radius:8px;padding:16px}
+@media(max-width:900px){.pipeline-layout{grid-template-columns:1fr;height:auto}.p-step-body{grid-template-columns:1fr}}
 """
 
+    # ── JavaScript ───────────────────────────────────────────────────────────
     js_pipeline = r"""
-const PS_KEY = 'cblog_pipeline';
-function psGet(){ try{return JSON.parse(sessionStorage.getItem(PS_KEY)||'{}')}catch(e){return{}} }
-function psSave(k,v){ const s=psGet(); s[k]=v; sessionStorage.setItem(PS_KEY,JSON.stringify(s)); }
-function psGetVal(k,fb){ const s=psGet(); return s[k]||(fb?s[fb]:'')||''; }
+const PS_KEY='cblog_pipeline';
+function psGet(){try{return JSON.parse(sessionStorage.getItem(PS_KEY)||'{}')}catch(e){return{}}}
+function psSave(k,v){const s=psGet();s[k]=v;sessionStorage.setItem(PS_KEY,JSON.stringify(s));}
+function psGetVal(k,fb){const s=psGet();return s[k]||(fb?s[fb]:'')||'';}
 
 function showStep(n){
   document.querySelectorAll('.p-step').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.p-nav-item').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.p-phase-banner,.phase-gate').forEach(el=>el.classList.remove('visible'));
   const panel=document.getElementById('p-step-'+n);
   const nav=document.getElementById('p-nav-'+n);
-  if(panel) panel.classList.add('active');
+  if(panel){panel.classList.add('active');
+    // show phase banner before this step
+    const prev=panel.previousElementSibling;
+    if(prev&&prev.classList.contains('p-phase-banner')) prev.classList.add('visible');
+    // show gate after the last step of a phase when returning
+  }
   if(nav) nav.classList.add('active');
   populateStep(n);
   window._pStep=n;
@@ -1804,12 +2091,11 @@ function populateStep(n){
   if(!panel) return;
   panel.querySelectorAll('[data-state-key]').forEach(el=>{
     if(el.value) return;
-    const val=psGetVal(el.dataset.stateKey, el.dataset.fallbackKey);
+    const val=psGetVal(el.dataset.stateKey,el.dataset.fallbackKey);
     if(val) el.value=val;
   });
-  // auto-fill current date for step 11
   const dateEl=panel.querySelector('input[name="current_date"]');
-  if(dateEl && !dateEl.value) dateEl.value=new Date().toISOString().slice(0,10);
+  if(dateEl&&!dateEl.value) dateEl.value=new Date().toISOString().slice(0,10);
 }
 
 async function runPipelineStep(n){
@@ -1818,180 +2104,298 @@ async function runPipelineStep(n){
   const statusEl=document.getElementById('p-status-'+n);
   const runBtn=document.getElementById('p-run-btn-'+n);
   const spinEl=document.getElementById('p-spin-'+n);
-
   const fields={};
   new FormData(form).forEach((v,k)=>fields[k]=v);
-
-  // Save "saves" fields to state
-  form.querySelectorAll('[data-save-key]').forEach(el=>psSave(el.dataset.saveKey, el.value));
-
-  outEl.innerHTML=''; outEl.classList.remove('empty');
-  runBtn.disabled=true;
-  if(spinEl) spinEl.style.display='inline-flex';
+  form.querySelectorAll('[data-save-key]').forEach(el=>psSave(el.dataset.saveKey,el.value));
+  outEl.innerHTML='';outEl.classList.remove('empty');
+  runBtn.disabled=true;if(spinEl)spinEl.style.display='inline-flex';
   statusEl.textContent='Waiting for Claude…';
-  document.getElementById('p-copy-'+n).style.display='none';
-  document.getElementById('p-dl-'+n).style.display='none';
-  document.getElementById('p-next-'+n).style.display='none';
-
+  ['p-copy-','p-dl-','p-next-'].forEach(p=>{const el=document.getElementById(p+n);if(el)el.style.display='none';});
   let fullText='';
-  const cursor=document.createElement('span'); cursor.className='cursor';
-
+  const cursor=document.createElement('span');cursor.className='cursor';
   try{
-    const resp=await fetch('/api/pipeline-run',{
-      method:'POST',
+    const resp=await fetch('/api/pipeline-run',{method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({step:n, fields})
-    });
-    if(!resp.ok){
-      const err=await resp.json().catch(()=>({error:resp.statusText}));
+      body:JSON.stringify({step:n,fields})});
+    if(!resp.ok){const err=await resp.json().catch(()=>({error:resp.statusText}));
       statusEl.textContent='✗ '+(err.error||'Error');
       outEl.innerHTML='<span style="color:var(--red)">'+(err.error||'Request failed')+'</span>';
-      runBtn.disabled=false; if(spinEl) spinEl.style.display='none';
-      return;
-    }
-    const reader=resp.body.getReader(); const dec=new TextDecoder();
+      runBtn.disabled=false;if(spinEl)spinEl.style.display='none';return;}
+    const reader=resp.body.getReader();const dec=new TextDecoder();
     outEl.appendChild(cursor);
     while(true){
-      const {done,value}=await reader.read(); if(done) break;
+      const{done,value}=await reader.read();if(done)break;
       dec.decode(value,{stream:true}).split('\n').forEach(line=>{
-        if(!line.startsWith('data: ')) return;
-        const pl=line.slice(6).trim(); if(pl==='[DONE]') return;
-        try{
-          const d=JSON.parse(pl);
-          if(d.text){ fullText+=d.text; cursor.remove(); outEl.innerHTML=renderMd(fullText); outEl.appendChild(cursor); outEl.scrollTop=outEl.scrollHeight; statusEl.textContent='Streaming…'; }
-          if(d.error){ statusEl.textContent='✗ '+d.error; outEl.innerHTML='<span style="color:var(--red)">'+d.error+'</span>'; }
+        if(!line.startsWith('data: '))return;
+        const pl=line.slice(6).trim();if(pl==='[DONE]')return;
+        try{const d=JSON.parse(pl);
+          if(d.text){fullText+=d.text;cursor.remove();outEl.innerHTML=renderMd(fullText);outEl.appendChild(cursor);outEl.scrollTop=outEl.scrollHeight;statusEl.textContent='Streaming…';}
+          if(d.error){statusEl.textContent='✗ '+d.error;outEl.innerHTML='<span style="color:var(--red)">'+d.error+'</span>';}
         }catch(e){}
       });
     }
     cursor.remove();
     const words=fullText.trim().split(/\s+/).length;
     statusEl.textContent='✓ Done · '+words+' words';
-    runBtn.disabled=false; if(spinEl) spinEl.style.display='none';
-
-    // Save output to pipeline state
+    runBtn.disabled=false;if(spinEl)spinEl.style.display='none';
     window['_pOut'+n]=fullText;
-    // We'll save the output key via data attribute on the panel
-    const panel=document.getElementById('p-step-'+n);
-    const outKey=panel ? panel.dataset.outputKey : null;
-    if(outKey) psSave(outKey, fullText);
-
+    const outKey=document.getElementById('p-step-'+n)?.dataset?.outputKey;
+    if(outKey) psSave(outKey,fullText);
     document.getElementById('p-copy-'+n).style.display='inline-flex';
     document.getElementById('p-dl-'+n).style.display='inline-flex';
     document.getElementById('p-next-'+n).style.display='inline-flex';
-
-    // Mark step done in sidebar
-    const navItem=document.getElementById('p-nav-'+n);
-    if(navItem){ navItem.classList.add('done'); }
-    const navCheck=document.getElementById('p-nav-check-'+n);
-    if(navCheck) navCheck.textContent='✓';
-
-    // Enable download-all if all key outputs exist
+    const navItem=document.getElementById('p-nav-'+n);if(navItem)navItem.classList.add('done');
+    const navCheck=document.getElementById('p-nav-check-'+n);if(navCheck)navCheck.textContent='✓';
+    // Show quality gate if this was last step in a phase
+    showGateIfPhaseComplete(n);
     checkDownloadAll();
+    return fullText;
   }catch(e){
-    cursor.remove(); statusEl.textContent='✗ '+e.message;
-    runBtn.disabled=false; if(spinEl) spinEl.style.display='none';
+    cursor.remove();statusEl.textContent='✗ '+e.message;
+    runBtn.disabled=false;if(spinEl)spinEl.style.display='none';
+  }
+}
+
+function showGateIfPhaseComplete(n){
+  // Phase boundary map: last step of each phase → gate id
+  const boundaries={2:1,5:2,7:3,10:4,13:5};
+  if(boundaries[n]){
+    const gate=document.getElementById('gate-'+boundaries[n]);
+    if(gate) gate.classList.add('visible');
   }
 }
 
 function nextStep(n){
-  if(n<11) showStep(n+1);
+  if(n<13) showStep(n+1); else showStep(14);
+}
+
+function passGate(ph){
+  // next phase start steps
+  const starts={1:3,2:6,3:8,4:11,5:14};
+  showStep(starts[ph]||14);
+}
+
+function failGate(ph){
+  const sel=document.getElementById('gate-route-'+ph);
+  const step=parseInt(sel?.value||'0');
+  if(step>0) showStep(step);
+}
+
+// One-shot: run all 13 agents in sequence
+async function runOneShot(){
+  const btn=document.getElementById('oneshot-btn');
+  if(btn) btn.disabled=true;
+  for(let n=1;n<=13;n++){
+    showStep(n);
+    await new Promise(r=>setTimeout(r,200));
+    try{ await runPipelineStep(n); }catch(e){ console.warn('Step '+n+' error:',e); }
+  }
+  showStep(14);
+  if(btn) btn.disabled=false;
 }
 
 function copyStepOutput(n){
-  const text=window['_pOut'+n]||'';
-  if(!text) return;
+  const text=window['_pOut'+n]||'';if(!text)return;
   const btn=document.getElementById('p-copy-'+n);
-  function ok(){ if(btn){btn.textContent='✓';setTimeout(()=>btn.textContent='⎘ Copy',1500);} }
-  function fb(){ const el=document.createElement('textarea'); el.value=text; el.style.cssText='position:fixed;opacity:0;top:0;left:0;width:1px;height:1px'; document.body.appendChild(el); el.focus(); el.select(); try{document.execCommand('copy');ok();}catch(e){} document.body.removeChild(el); }
-  if(navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(ok).catch(fb); else fb();
+  function ok(){if(btn){btn.textContent='✓';setTimeout(()=>btn.textContent='⎘ Copy',1500);}}
+  function fb(){const el=document.createElement('textarea');el.value=text;el.style.cssText='position:fixed;opacity:0;top:0;left:0;width:1px;height:1px';document.body.appendChild(el);el.focus();el.select();try{document.execCommand('copy');ok();}catch(e){}document.body.removeChild(el);}
+  if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(text).then(ok).catch(fb);else fb();
 }
 
-function dlStep(n, id){
-  const text=window['_pOut'+n]||'';
-  if(!text) return;
+function dlStep(n,id){
+  const text=window['_pOut'+n]||'';if(!text)return;
   const a=document.createElement('a');
   a.href='data:text/markdown;charset=utf-8,'+encodeURIComponent(text);
-  a.download='step'+n+'-'+id+'.md'; a.click();
+  a.download='step'+n+'-'+id+'.md';a.click();
 }
 
-function checkDownloadAll(){
-  const state=psGet();
-  const hasAny=Object.keys(state).some(k=>k.endsWith('_output')||k==='draft_v1'||k==='final_draft');
-  const btn=document.getElementById('p-dl-all');
-  if(btn) btn.disabled=!hasAny;
+function dlDeliverable(d){
+  const s=psGet();
+  const content={
+    1:s.final_draft||s.draft_humanized||s.draft_seo||'',
+    2:s.seo_report||'',
+    3:s.calendar_output||'',
+    4:s.draft_seo||'',
+    5:s.decay_report||'',
+    6:(s.factcheck_output||'')+(s.citations_output?'\n\n---\n\n'+s.citations_output:''),
+  }[d]||'';
+  const names={1:'blog-post',2:'seo-metadata',3:'social-media',4:'link-map',5:'decay-report',6:'editorial-notes'};
+  if(!content){alert('Run the relevant agents first to generate this deliverable.');return;}
+  const a=document.createElement('a');
+  a.href='data:text/markdown;charset=utf-8,'+encodeURIComponent(content);
+  a.download='deliverable-'+d+'-'+names[d]+'.md';a.click();
 }
 
 function downloadAll(){
-  const state=psGet();
-  const keys=['kw_output','brief_output','draft_v1','draft_seo','factcheck_output',
-               'citations_output','draft_humanized','headlines_output','final_draft',
-               'seo_report','decay_report'];
-  const labels=['Agent 1 — Keyword Research','Agent 2 — Content Brief','Agent 3 — First Draft',
-                 'Agent 4 — SEO Optimized','Agent 5 — Fact Check','Agent 6 — Citations & AI Audit',
-                 'Agent 7 — Humanized','Agent 8 — Headlines','Agent 9 — Polished Final',
-                 'Agent 10 — SEO Check','Agent 11 — Decay Report'];
-  let md='# Blog Pipeline — All Outputs\n\n';
-  keys.forEach((k,i)=>{ if(state[k]) md+=`---\n\n## ${labels[i]}\n\n${state[k]}\n\n`; });
+  const s=psGet();
+  const keys=['kw_output','brief_output','outline_output','draft_v1','draft_seo',
+              'factcheck_output','citations_output','draft_humanized','headlines_output',
+              'final_draft','seo_report','decay_report','calendar_output'];
+  const labels=['Agent 1 — Keyword Research','Agent 2 — Content Brief','Agent 3 — Outline',
+                'Agent 4 — First Draft','Agent 5 — SEO Optimized','Agent 6 — Fact Check',
+                'Agent 7 — Citations Audit','Agent 8 — Humanized','Agent 9 — Headlines',
+                'Agent 10 — Polished Final','Agent 11 — SEO Check','Agent 12 — Decay Report',
+                'Agent 13 — Editorial Calendar'];
+  let md='# Blog Orchestration Pipeline — All Outputs\n\n';
+  md+='> Generated: '+new Date().toLocaleString()+'\n\n';
+  md+='---\n\n## 📦 DELIVERABLES SUMMARY\n\n';
+  md+='1. Blog Post — see Agent 10 Polished Final\n';
+  md+='2. SEO Metadata — see Agent 11 SEO Check\n';
+  md+='3. Social Media — see Agent 13 Editorial Calendar\n';
+  md+='4. Internal Link Map — see Agent 5 SEO Optimized\n';
+  md+='5. Decay Report — see Agent 12\n';
+  md+='6. Editorial Notes — see Agents 6 & 7\n\n---\n\n';
+  keys.forEach((k,i)=>{if(s[k])md+=`## ${labels[i]}\n\n${s[k]}\n\n---\n\n`;});
   const a=document.createElement('a');
   a.href='data:text/markdown;charset=utf-8,'+encodeURIComponent(md);
-  a.download='blog-pipeline-outputs.md'; a.click();
+  a.download='blog-pipeline-complete.md';a.click();
+}
+
+function checkDownloadAll(){
+  const s=psGet();
+  const hasAny=Object.keys(s).some(k=>k.endsWith('_output')||k==='draft_v1'||k==='final_draft');
+  const btn=document.getElementById('p-dl-all');if(btn)btn.disabled=!hasAny;
+  // Update QA gate indicators
+  const gateMap={1:'final_draft',2:'seo_report',3:'calendar_output',4:'draft_seo',5:'decay_report',6:'factcheck_output'};
+  Object.entries(gateMap).forEach(([d,k])=>{
+    const el=document.getElementById('qa-'+d);
+    if(el) el.innerHTML=s[k]?'<span style="color:var(--green);font-size:11px">✓ Ready</span>':'<span style="color:var(--muted);font-size:11px">Pending</span>';
+  });
+}
+
+function checkAllGates(){
+  const s=psGet();
+  const gates=document.getElementById('qa-gates');
+  if(!gates) return;
+  const checks=[
+    {label:'Accuracy: All facts verified',key:'factcheck_output'},
+    {label:'SEO: Technical requirements met',key:'seo_report'},
+    {label:'Authenticity: Passes AI detection',key:'citations_output'},
+    {label:'Readability: Logical flow, clear purpose',key:'final_draft'},
+    {label:'Engagement: Strong hook, examples, CTA',key:'draft_humanized'},
+    {label:'Freshness: Decay risks identified',key:'decay_report'},
+    {label:'Optimization: Best headline selected',key:'final_draft'},
+    {label:'Promotion: Editorial calendar ready',key:'calendar_output'},
+  ];
+  gates.innerHTML=checks.map(c=>
+    `<div>${s[c.key]?'✅':'☐'} <strong>${c.label.split(':')[0]}:</strong> ${c.label.split(':')[1]}</div>`
+  ).join('');
 }
 
 function resetPipeline(){
-  if(!confirm('Reset pipeline? All step outputs will be cleared.')) return;
+  if(!confirm('Reset pipeline? All step outputs will be cleared.'))return;
   sessionStorage.removeItem(PS_KEY);
-  for(let n=1;n<=11;n++){
+  for(let n=1;n<=13;n++){
     window['_pOut'+n]=null;
-    const nav=document.getElementById('p-nav-'+n);
-    if(nav){ nav.classList.remove('done'); }
-    const check=document.getElementById('p-nav-check-'+n);
-    if(check) check.textContent='';
+    const nav=document.getElementById('p-nav-'+n);if(nav)nav.classList.remove('done');
+    const check=document.getElementById('p-nav-check-'+n);if(check)check.textContent='';
     const out=document.getElementById('p-out-'+n);
-    if(out){ out.className='output-box empty'; out.innerHTML='<span>Run Agent '+n+' to see output here</span>'; }
-    const st=document.getElementById('p-status-'+n);
-    if(st) st.textContent='';
-    ['p-copy-','p-dl-','p-next-'].forEach(p=>{ const el=document.getElementById(p+n); if(el) el.style.display='none'; });
+    if(out){out.className='output-box empty';out.innerHTML='<span>Run Agent '+n+' to see output here</span>';}
+    const st=document.getElementById('p-status-'+n);if(st)st.textContent='';
+    ['p-copy-','p-dl-','p-next-'].forEach(p=>{const el=document.getElementById(p+n);if(el)el.style.display='none';});
   }
+  document.querySelectorAll('.phase-gate').forEach(el=>el.classList.remove('visible'));
   showStep(1);
 }
 
-// Init
-document.addEventListener('DOMContentLoaded',()=>{ showStep(1); checkDownloadAll(); });
+document.addEventListener('DOMContentLoaded',()=>{showStep(1);checkDownloadAll();});
 """
 
-    # Attach output_key as data attribute on each panel
-    panels = panels.replace(
-        '<div class="p-step" id="p-step-',
-        '<div class="p-step" id="p-step-'
-    )
-    for s in PIPELINE_STEPS:
-        n = s["step"]
-        panels = panels.replace(
-            f'<div class="p-step" id="p-step-{n}" data-step="{n}">',
-            f'<div class="p-step" id="p-step-{n}" data-step="{n}" data-output-key="{s["output_key"]}">'
-        )
-        # Add data-save-key to "saves" fields
-        for fname in s.get("saves", []):
-            panels = panels.replace(
-                f'name="{fname}"',
-                f'name="{fname}" data-save-key="{fname}"',
-                1  # replace only the first occurrence in this panel
-            )
+    # ── One-shot quick start card ────────────────────────────────────────────
+    oneshot_html = """
+<div class="oneshot-card" id="oneshot-panel">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div>
+      <div style="font-weight:700;font-size:13px">⚡ Quick Start — One-Shot Mode</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">
+        Fill in the details, then run all 13 agents automatically in sequence.
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('oneshot-panel').style.display='none'">×</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">
+    <div class="form-group" style="margin:0">
+      <label class="field-label">Topic</label>
+      <input type="text" id="os-topic" placeholder="e.g. AI content marketing">
+    </div>
+    <div class="form-group" style="margin:0">
+      <label class="field-label">Audience</label>
+      <input type="text" id="os-audience" placeholder="e.g. marketing managers">
+    </div>
+    <div class="form-group" style="margin:0">
+      <label class="field-label">Goal</label>
+      <select id="os-goal">
+        <option>SEO ranking</option><option>Lead generation</option>
+        <option>Brand awareness</option><option>Engagement</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0">
+      <label class="field-label">Tone</label>
+      <select id="os-tone">
+        <option>Conversational</option><option>Professional</option>
+        <option>Expert</option><option>Accessible</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0">
+      <label class="field-label">Length</label>
+      <select id="os-length">
+        <option value="1500">Medium — 1,500 words</option>
+        <option value="2000">Long — 2,000 words</option>
+        <option value="2500">Long-form — 2,500+</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0">
+      <label class="field-label">Content Type</label>
+      <select id="os-type">
+        <option value="guide">Guide / Pillar</option>
+        <option value="how-to">How-To / Tutorial</option>
+        <option value="listicle">Listicle</option>
+        <option value="opinion">Opinion / POV</option>
+      </select>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="btn btn-primary" id="oneshot-btn" onclick="prefillAndRunAll()">
+      🚀 Run All 13 Agents
+    </button>
+    <span style="font-size:11px;color:var(--muted)">Estimated time: 10–20 min depending on model</span>
+  </div>
+</div>
+<script>
+function prefillAndRunAll(){
+  const topic=document.getElementById('os-topic').value.trim();
+  if(!topic){alert('Enter a topic first.');return;}
+  psSave('topic',topic);
+  psSave('audience',document.getElementById('os-audience').value||'general audience');
+  psSave('goal',document.getElementById('os-goal').value);
+  psSave('tone',document.getElementById('os-tone').value);
+  psSave('word_count',document.getElementById('os-length').value);
+  psSave('content_type',document.getElementById('os-type').value);
+  runOneShot();
+}
+</script>
+"""
+
+    # Build the body
+    ok = claude_available()
+    pill_cls = "ok" if ok else ""
+    pill_label = "Claude connected" if ok else "claude CLI not found"
 
     body = f"""
 <style>{css_pipeline}</style>
+{oneshot_html}
 <div class="pipeline-layout">
   <div class="pipeline-sidebar">
     <div class="pipeline-sidebar-header">
-      <a href="/" class="btn btn-ghost btn-sm" style="margin-bottom:10px;display:inline-flex">← Home</a>
-      <div style="font-weight:700;font-size:13px">📋 11-Agent Pipeline</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:2px">Sequential blog creation workflow</div>
+      <a href="/" class="btn btn-ghost btn-sm" style="margin-bottom:8px;display:inline-flex">← Home</a>
+      <div style="font-weight:700;font-size:13px">📋 13-Agent Pipeline</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">6 phases · sequential orchestration</div>
     </div>
     <div class="p-nav">{nav_items}</div>
     <div class="pipeline-sidebar-footer">
       <button class="btn btn-ghost btn-sm" onclick="resetPipeline()" style="width:100%;justify-content:center">↺ Reset</button>
       <button class="btn btn-secondary btn-sm" id="p-dl-all" onclick="downloadAll()" disabled
-              style="width:100%;justify-content:center">⬇ Download All Outputs</button>
+              style="width:100%;justify-content:center">⬇ Download All</button>
     </div>
   </div>
   <div class="pipeline-main">
@@ -2000,12 +2404,13 @@ document.addEventListener('DOMContentLoaded',()=>{ showStep(1); checkDownloadAll
 </div>
 <script>{js_pipeline}</script>
 """
+
     return render_template_string(f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>11-Agent Pipeline — Claude Blog</title>
+<title>Blog Orchestration Pipeline — Claude Blog</title>
 <style>{CSS}</style>
 </head>
 <body>
@@ -2020,9 +2425,7 @@ document.addEventListener('DOMContentLoaded',()=>{ showStep(1); checkDownloadAll
   <a href="/saved" class="nav-link">Saved</a>
   <a href="/settings" class="nav-link">Settings</a>
   <div class="nav-spacer"></div>
-  <div class="status-pill {'ok' if claude_available() else ''}" title="Claude subscription auth">
-    <span class="dot"></span>{'Claude connected' if claude_available() else 'claude CLI not found'}
-  </div>
+  <div class="status-pill {pill_cls}"><span class="dot"></span>{pill_label}</div>
 </nav>
 {body}
 <script>{JS}</script>
@@ -2107,6 +2510,7 @@ def api_pipeline_run():
         mimetype="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
 
 
 # ---------------------------------------------------------------------------
