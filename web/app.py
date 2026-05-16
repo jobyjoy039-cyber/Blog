@@ -14,7 +14,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -556,10 +555,25 @@ async function saveOutput(skillId, content, btn) {
 
 function copyOutput() {
   if (!window._lastOutput) return;
-  navigator.clipboard.writeText(window._lastOutput).then(() => {
-    const btn = document.getElementById('copy-btn');
-    if (btn) { const t = btn.textContent; btn.textContent = '✓ Copied'; setTimeout(() => btn.textContent = t, 1600); }
-  });
+  const btn = document.getElementById('copy-btn');
+  const origLabel = btn ? btn.textContent : '⎘ Copy';
+  function showOk() {
+    if (btn) { btn.textContent = '✓ Copied'; setTimeout(() => btn.textContent = origLabel, 1600); }
+  }
+  function fallback() {
+    const el = document.createElement('textarea');
+    el.value = window._lastOutput;
+    el.style.cssText = 'position:fixed;opacity:0;top:0;left:0;width:1px;height:1px';
+    document.body.appendChild(el);
+    el.focus(); el.select();
+    try { document.execCommand('copy'); showOk(); } catch(e) {}
+    document.body.removeChild(el);
+  }
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(window._lastOutput).then(showOk).catch(fallback);
+  } else {
+    fallback();
+  }
 }
 
 /* ---- Minimal markdown renderer ---- */
@@ -815,70 +829,66 @@ def api_run():
         return jsonify({"error": f"Missing field: {e}"}), 400
 
     def generate():
-        # Write system prompt to temp file to avoid shell-length limits
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt",
-                                         delete=False, encoding="utf-8") as tf:
-            tf.write(system_prompt)
-            sys_file = tf.name
+        allowed = "WebSearch,WebFetch" if use_web else ""
+        cmd = [
+            "claude", "-p", user_msg,
+            "--system-prompt", system_prompt,
+            "--output-format", "stream-json",
+            "--include-partial-messages",
+            "--verbose",
+            "--no-session-persistence",
+        ]
+        if allowed:
+            cmd += ["--allowedTools", allowed]
+        else:
+            cmd += ["--tools", ""]
 
-        try:
-            allowed = "WebSearch,WebFetch" if use_web else ""
-            cmd = [
-                "claude", "-p", user_msg,
-                "--system-prompt", f"@{sys_file}",
-                "--output-format", "stream-json",
-                "--include-partial-messages",
-                "--verbose",
-                "--no-session-persistence",
-            ]
-            if allowed:
-                cmd += ["--allowedTools", allowed]
-            else:
-                cmd += ["--tools", ""]
+        model = get_model()
+        if model:
+            cmd += ["--model", model]
 
-            model = get_model()
-            if model:
-                cmd += ["--model", model]
+        # Strip API key vars so the CLI falls back to OAuth (subscription) auth
+        clean_env = {k: v for k, v in os.environ.items()
+                     if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY_ID",
+                                  "ANTHROPIC_BASE_URL")}
 
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                bufsize=1,
-                cwd=str(ROOT),
-            )
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+            cwd=str(ROOT),
+            env=clean_env,
+        )
 
-            for raw_line in proc.stdout:
-                line = raw_line.strip()
-                if not line:
-                    continue
-                try:
-                    ev = json.loads(line)
-                    # Real-time text delta: stream_event → content_block_delta → text_delta
-                    if ev.get("type") == "stream_event":
-                        inner = ev.get("event", {})
-                        if inner.get("type") == "content_block_delta":
-                            delta = inner.get("delta", {})
-                            if delta.get("type") == "text_delta":
-                                text = delta.get("text", "")
-                                if text:
-                                    yield f"data: {json.dumps({'text': text})}\n\n"
-                    # Error events
-                    elif ev.get("type") == "result" and ev.get("is_error"):
-                        msg = ev.get("result", "Unknown error")
-                        yield f"data: {json.dumps({'error': msg})}\n\n"
-                except json.JSONDecodeError:
-                    pass
+        for raw_line in proc.stdout:
+            line = raw_line.strip()
+            if not line:
+                continue
+            try:
+                ev = json.loads(line)
+                # Real-time text delta: stream_event → content_block_delta → text_delta
+                if ev.get("type") == "stream_event":
+                    inner = ev.get("event", {})
+                    if inner.get("type") == "content_block_delta":
+                        delta = inner.get("delta", {})
+                        if delta.get("type") == "text_delta":
+                            text = delta.get("text", "")
+                            if text:
+                                yield f"data: {json.dumps({'text': text})}\n\n"
+                # Error events
+                elif ev.get("type") == "result" and ev.get("is_error"):
+                    msg = ev.get("result", "Unknown error")
+                    yield f"data: {json.dumps({'error': msg})}\n\n"
+            except json.JSONDecodeError:
+                pass
 
-            proc.wait()
-            if proc.returncode not in (0, None):
-                err = proc.stderr.read() if proc.stderr else ""
-                if err:
-                    yield f"data: {json.dumps({'error': err[:300]})}\n\n"
-
-        finally:
-            os.unlink(sys_file)
+        proc.wait()
+        if proc.returncode not in (0, None):
+            err = proc.stderr.read() if proc.stderr else ""
+            if err:
+                yield f"data: {json.dumps({'error': err[:300]})}\n\n"
 
         yield "data: [DONE]\n\n"
 
