@@ -725,6 +725,7 @@ def render(body: str, title: str = "Claude Blog", active: str = "") -> str:
   <a href="/run/humanize" class="nav-link {'active' if active=='humanize' else ''}">Humanize</a>
   <a href="/run/ai-proof" class="nav-link {'active' if active=='ai-proof' else ''}">AI-Proof</a>
   <a href="/pipeline" class="nav-link {'active' if active=='pipeline' else ''}" style="color:var(--accent);font-weight:600">⚡ Pipeline</a>
+  <a href="/authority" class="nav-link {'active' if active=='authority' else ''}" style="color:#d29922;font-weight:600">🏆 Authority</a>
   <a href="/saved" class="nav-link {'active' if active=='saved' else ''}">Saved</a>
   <a href="/analyze" class="nav-link {'active' if active=='analyze' else ''}">Analyzer</a>
   <a href="/cluster-map" class="nav-link {'active' if active=='cluster' else ''}">Clusters</a>
@@ -775,13 +776,30 @@ def home():
 
 <div class="grid g4" style="margin-bottom:22px">
   <div class="card"><span class="stat-num">{len(SKILLS)}</span><div class="stat-label">Skills</div></div>
-  <div class="card"><span class="stat-num">15</span><div class="stat-label">Agents</div></div>
+  <div class="card"><span class="stat-num">32</span><div class="stat-label">Agents</div></div>
   <div class="card"><span class="stat-num">{kw_count}</span><div class="stat-label">Keyword reports</div></div>
   <div class="card"><span class="stat-num">{perf_count}</span><div class="stat-label">Performance reports</div></div>
 </div>
 
 <div class="sec-header"><h2>Skills</h2></div>
 <div class="grid g4" style="margin-bottom:26px">{skill_cards}</div>
+
+<div class="grid g2" style="margin-bottom:22px">
+  <a href="/pipeline" style="text-decoration:none">
+    <div class="card" style="border:1px solid var(--accent);cursor:pointer">
+      <h2 style="color:var(--accent)">⚡ 13-Agent Pipeline</h2>
+      <p style="font-size:13px;color:var(--muted)">Sequential orchestration · 6 phases · keyword research through editorial calendar · quality gates + one-shot mode</p>
+      <span class="btn btn-primary btn-sm" style="margin-top:8px">Launch Pipeline →</span>
+    </div>
+  </a>
+  <a href="/authority" style="text-decoration:none">
+    <div class="card" style="border:1px solid #d29922;cursor:pointer">
+      <h2 style="color:#d29922">🏆 19-Agent Authority Pipeline</h2>
+      <p style="font-size:13px;color:var(--muted)">5 phases · 10,000–15,000 word articles · deep research, master blueprint, quality polish, CMS assembly, launch plan</p>
+      <span class="btn btn-sm" style="margin-top:8px;background:#d2992222;color:#d29922;border:1px solid #d2992255">Launch Authority →</span>
+    </div>
+  </a>
+</div>
 
 <div class="grid g2">
   <div class="card">
@@ -2418,6 +2436,7 @@ function prefillAndRunAll(){
   <div class="nav-brand">✍ Claude<em>Blog</em></div>
   <a href="/" class="nav-link">Home</a>
   <a href="/pipeline" class="nav-link active" style="color:var(--accent);font-weight:600">⚡ Pipeline</a>
+  <a href="/authority" class="nav-link" style="color:#d29922;font-weight:600">🏆 Authority</a>
   <a href="/run/keyword-research" class="nav-link">Keywords</a>
   <a href="/run/write" class="nav-link">Write</a>
   <a href="/run/humanize" class="nav-link">Humanize</a>
@@ -2511,6 +2530,532 @@ def api_pipeline_run():
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
+
+
+# ===========================================================================
+# AUTHORITY ARTICLE PIPELINE  (19 agents · 5 phases · 10,000–15,000 words)
+# ===========================================================================
+
+AUTHORITY_PHASES = [{'phase': 1, 'label': 'Research Foundation', 'icon': '🔬', 'steps': [1, 2, 3, 4, 5, 6], 'color': '#58a6ff', 'gate': 'All research complete: audience mapped, competitors analyzed, 25+ statistics sourced, keyword strategy locked, content architecture approved, data library compiled.', 'fail_routes': {'Step 1 (Audience Research)': 1, 'Step 2 (Competitive Research)': 2, 'Step 3 (Trend & Data)': 3, 'Step 4 (Keyword Strategy)': 4, 'Step 5 (Content Architecture)': 5, 'Step 6 (Data Enrichment)': 6}}, {'phase': 2, 'label': 'Strategic Blueprint', 'icon': '🗺', 'steps': [7], 'color': '#d29922', 'gate': 'Master blueprint reviewed: 15-section structure, word counts, data allocation map, keyword integration plan, visual asset specs all confirmed.', 'fail_routes': {'Step 7 (Master Blueprint)': 7}}, {'phase': 3, 'label': 'Content Creation', 'icon': '✍', 'steps': [8, 9, 10], 'color': '#3fb950', 'gate': '4,000-6,000 word draft complete. SEO targets met. All appendices, FAQ (30+ Qs), glossary (40 terms), and supplemental package finished.', 'fail_routes': {'Step 8 (Authority Writer)': 8, 'Step 9 (SEO Optimization)': 9, 'Step 10 (Appendices)': 10}}, {'phase': 4, 'label': 'Quality & Polish', 'icon': '💎', 'steps': [11, 12, 13, 14, 15, 16], 'color': '#bc8cff', 'gate': 'Passes AI detection. All facts verified. All citations attributed. Best headline selected. Every word earns its place. SEO audit green.', 'fail_routes': {'Step 11 (Humanizer)': 11, 'Step 12 (Headlines)': 12, 'Step 13 (Editorial Polish)': 13, 'Step 14 (Fact Check)': 14, 'Step 15 (Citations Audit)': 15, 'Step 16 (SEO Audit)': 16}}, {'phase': 5, 'label': 'Publication Ready', 'icon': '🚀', 'steps': [17, 18, 19], 'color': '#f85149', 'gate': 'CMS package assembled. Schema markup valid. Social variants written. 30-day promotion calendar complete. All launch checklist items checked.', 'fail_routes': {'Step 17 (CMS Assembly)': 17, 'Step 18 (Social & Metadata)': 18, 'Step 19 (Launch Prep)': 19}}]
+
+AUTHORITY_STEPS = [{'step': 1, 'phase': 1, 'id': 'aud', 'icon': '👥', 'agent': 'Agent 1', 'label': 'Audience Research', 'description': 'Deep-dive audience analysis: demographics, 15-20 pain points, 3-5 segments, decision-making patterns, direct quotes, journey map.', 'web_tools': True, 'system_prompt': "You are an Audience Intelligence Specialist. Conduct a deep-dive audience analysis (3,000+ words).\n\n## DELIVERABLES\n\n### 1. DEMOGRAPHIC PROFILE\nAge range, gender split, income, education, job titles, geography, company size if B2B.\n\n### 2. PSYCHOGRAPHIC DEEP-DIVE\nCore values, motivations, identity, aspirations, fears, daily friction points.\n\n### 3. PAIN POINTS (15-20 ranked)\nFor each: problem -> emotional impact -> what they've tried -> why it failed -> what they really need.\nRank by: Urgency (1-10) | Frequency (1-10) | Cost of not solving (1-10)\n\n### 4. DECISION-MAKING PATTERNS\nHow do they research? Who influences them? What triggers action? What objections block them?\n\n### 5. AUDIENCE SEGMENTS (3-5)\nFor each: name, size estimate, primary pain point, preferred content format, purchase behavior, best CTA.\n\n### 6. CUSTOMER JOURNEY MAP\nAwareness -> Consideration -> Decision -> Retention.\nWhat content does each stage need?\n\n### 7. VOICE OF CUSTOMER (direct quotes)\n3-5 realistic quotes capturing exact language. Note source for each.\n\nOutput minimum 3,000 words. Use real language patterns from this audience.", 'fields': [{'name': 'topic', 'label': 'Article Topic', 'type': 'text', 'placeholder': 'e.g. Email marketing automation for SaaS'}, {'name': 'industry', 'label': 'Industry / Niche', 'type': 'text', 'placeholder': 'e.g. B2B SaaS, e-commerce, healthcare'}], 'prompt': 'Conduct a complete audience intelligence analysis for an authority article on: {topic}\n\nIndustry/niche: {industry}', 'output_key': 'audience_research', 'saves': ['topic', 'industry']}, {'step': 2, 'phase': 1, 'id': 'comp', 'icon': '🏆', 'agent': 'Agent 2', 'label': 'Competitive Landscape', 'description': 'Analyze 20 competitor articles, build competitive matrix, identify 5-10 content gaps, inventory 30+ authority sources.', 'web_tools': True, 'system_prompt': 'You are a Competitive Landscape Mapper. Analyze the competitive content landscape (3,000+ words).\n\n## TASK 1: COMPETITOR IDENTIFICATION\nIdentify 20 competitor articles ranking for this topic.\nURL | Domain | Word count (estimate) | Publish date | Format type\n\n## TASK 2: COMPETITIVE MATRIX\nRate each competitor 1-5 across: Depth | Data | Examples | Originality | UX | CTAs | Freshness | Visuals | Expert Quotes | Case Studies | Actionability | SEO | Structure | Tone | Authority\n\n## TASK 3: CONTENT GAP ANALYSIS (5-10 gaps)\nFor each gap: describe it -> why it matters -> how to fill it.\n\n## TASK 4: AUTHORITY SOURCE INVENTORY (30+ sources)\nTier 1 (academic/gov) | Tier 2 (industry research) | Tier 3 (company blogs)\n\n## TASK 5: FORMAT ANALYSIS\nWhat content formats dominate? What is missing?\n\n## TASK 6: UNIQUE ANGLE RECOMMENDATIONS (3-5)\nFor each: angle | target segment | why it wins\n\nOutput minimum 3,000 words. Be specific about gaps with exact examples.', 'fields': [{'name': 'topic', 'label': 'Article Topic', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'topic'}, {'name': 'industry', 'label': 'Industry / Niche', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'industry'}], 'prompt': 'Analyze the competitive content landscape for: {topic}\n\nIndustry: {industry}', 'output_key': 'competitive_research', 'saves': []}, {'step': 3, 'phase': 1, 'id': 'trend', 'icon': '📊', 'agent': 'Agent 3', 'label': 'Trend & Data Research', 'description': 'Find 25-40 verified statistics with sources, 10+ expert quotes, 3-5 case studies with measurable results, tools comparison matrix.', 'web_tools': True, 'system_prompt': 'You are a Trend & Data Research Specialist. Build the complete data foundation (4,000+ words).\n\n## TASK 1: INDUSTRY TREND ANALYSIS\nWhat is changing in this space right now?\nWhat emerging tools are disrupting it?\nWhat best practices evolved in the last 2-3 years?\nWhat predictions are experts making for the next 1-3 years?\n\n## TASK 2: STATISTICS INVENTORY (25-40 stats)\nFormat: # | Statistic | Source | Year | Sample size | Why it matters | Tier (1/2/3) | Surprising? (Y/N)\nRules: Only stats from 2022-2025. Tier 1 preferred. Exact numbers only.\n\n## TASK 3: EXPERT PERSPECTIVES (10+ quotes)\nFor each: Full name + credentials | Direct quote | Source + date | What point it supports\n\n## TASK 4: CASE STUDIES (3-5)\nFor each: Company/size | Challenge | Approach (3-5 steps) | Results (specific %, $, time) | Lesson | Source\n\n## TASK 5: TOOLS & SOLUTIONS MATRIX (10-15 tools)\nTool | Best For | Price Range | Pros | Cons | Who Should Use It\n\nOutput minimum 4,000 words. Every statistic must have a source.', 'fields': [{'name': 'topic', 'label': 'Article Topic', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'topic'}, {'name': 'industry', 'label': 'Industry / Niche', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'industry'}], 'prompt': 'Build the complete data foundation for an authority article on: {topic}\n\nIndustry: {industry}', 'output_key': 'trend_research', 'saves': []}, {'step': 4, 'phase': 1, 'id': 'kw', 'icon': '🔍', 'agent': 'Agent 4', 'label': 'Keyword Strategy', 'description': 'Primary keyword selection, LSI mapping, question keywords, search intent, keyword density targets, title/meta variants.', 'web_tools': False, 'system_prompt': 'You are an SEO Keyword Strategy Specialist. Build the complete keyword map.\n\n## 1. PRIMARY KEYWORD SELECTION\nBest primary keyword: rationale, estimated volume, difficulty, search intent.\n\n## 2. SECONDARY KEYWORDS (5-8)\nKeyword | Volume est. | Intent | Best placement\n\n## 3. QUESTION KEYWORDS (10-15)\nQuestions this article should answer. Prioritize PAA-style questions.\n\n## 4. LSI / SEMANTIC KEYWORDS (15-20)\nSemantically related terms. Map each to the section where it fits naturally.\n\n## 5. LONG-TAIL OPPORTUNITIES (5-8)\nLow competition, high intent long-tail variants.\n\n## 6. KEYWORD DENSITY TARGETS\nPrimary keyword: target 0.5-1.5%.\n\n## 7. TITLE TAG OPTIONS (5 variants)\nOne emotional, one number-led, one question, one how-to, one definitive guide.\n\n## 8. META DESCRIPTION (3 variants, 150-160 chars each)\n\n## 9. URL SLUG\nShort, keyword-rich, no stop words.', 'fields': [{'name': 'topic', 'label': 'Article Topic', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'topic'}, {'name': 'audience_research', 'label': 'Audience Research', 'type': 'textarea', 'rows': 3, 'placeholder': 'Auto-filled from Step 1 output', 'state_key': 'audience_research'}, {'name': 'competitive_research', 'label': 'Competitive Research', 'type': 'textarea', 'rows': 3, 'placeholder': 'Auto-filled from Step 2 output', 'state_key': 'competitive_research'}], 'prompt': 'Build the complete keyword strategy.\n\nTopic: {topic}\n\nAudience Research:\n---\n{audience_research}\n\nCompetitive Research:\n---\n{competitive_research}', 'output_key': 'keyword_strategy', 'saves': []}, {'step': 5, 'phase': 1, 'id': 'arch', 'icon': '🏛', 'agent': 'Agent 5', 'label': 'Content Architecture', 'description': '4-7 content pillars, sub-topic tree, depth framework, information sequencing, differentiation strategy, dependency map.', 'web_tools': False, 'system_prompt': 'You are a Strategic Content Design Specialist. Design the information architecture.\n\n## TASK 1: CONTENT PILLARS (4-7)\nFor each: name | why essential | audience segment | depth level (surface/intermediate/expert)\n\n## TASK 2: SUB-TOPIC MAPPING\nFor each pillar, 2-5 sub-topics with rationale.\n\n## TASK 3: DEPTH FRAMEWORK\nFor each section: surface | intermediate | expert | recommended depth for THIS article.\n\n## TASK 4: INFORMATION SEQUENCING\nOptimal reading order. Dependency chain. Aha moment location.\nEmotional arc: Problem -> Tension -> Insight -> Relief -> Action\n\n## TASK 5: DIFFERENTIATION STRATEGY\nWhat can this article add that NO OTHER article has?\n\n## TASK 6: CONTENT DEPENDENCY MAP\nTree showing how sections connect and build on each other.', 'fields': [{'name': 'topic', 'label': 'Article Topic', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'topic'}, {'name': 'audience_research', 'label': 'Audience Research', 'type': 'textarea', 'rows': 3, 'placeholder': 'Auto-filled from Step 1', 'state_key': 'audience_research'}, {'name': 'competitive_research', 'label': 'Competitive Research', 'type': 'textarea', 'rows': 3, 'placeholder': 'Auto-filled from Step 2', 'state_key': 'competitive_research'}, {'name': 'keyword_strategy', 'label': 'Keyword Strategy', 'type': 'textarea', 'rows': 3, 'placeholder': 'Auto-filled from Step 4', 'state_key': 'keyword_strategy'}], 'prompt': 'Design the content architecture.\n\nTopic: {topic}\n\nAudience:\n---\n{audience_research}\n\nCompetitive Research:\n---\n{competitive_research}\n\nKeyword Strategy:\n---\n{keyword_strategy}', 'output_key': 'content_architecture', 'saves': []}, {'step': 6, 'phase': 1, 'id': 'data', 'icon': '📚', 'agent': 'Agent 6', 'label': 'Data Enrichment Library', 'description': 'Compile all research: statistics reference, case study library, expert insights, tools matrix, templates inventory, research gaps.', 'web_tools': False, 'system_prompt': 'You are a Data Enrichment Specialist. Compile all research into a structured library.\n\n## SECTION 1: STATISTICS REFERENCE\nFor each stat: STAT #N | Statistic | Source | Year | Tier | Best used in | Context | Surprising?\nGroup by theme.\n\n## SECTION 2: CASE STUDY LIBRARY (3-10)\nCASE STUDY: [Company] | Industry | Size\nChallenge | Approach | Results (specific numbers) | Quote | Lesson | Use in: [section]\n\n## SECTION 3: EXPERT INSIGHTS\nEXPERT: [Name] | Credentials | Key insight | Direct quote | Source | Use in: [section]\n\n## SECTION 4: TOOLS COMPARISON MATRIX\nReady-to-embed comparison table.\n\n## SECTION 5: TEMPLATES & FRAMEWORKS\nWhat it is | Source | How reader can use it\n\n## SECTION 6: RESEARCH GAPS\nWhat data is missing? Where does research feel thin?\n\nOutput: Complete annotated library with 50+ sources.', 'fields': [{'name': 'topic', 'label': 'Article Topic', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'topic'}, {'name': 'trend_research', 'label': 'Trend & Data Research', 'type': 'textarea', 'rows': 5, 'placeholder': 'Auto-filled from Step 3 output', 'state_key': 'trend_research'}], 'prompt': 'Compile all research into a structured reference library.\n\nTopic: {topic}\n\nResearch Data:\n---\n{trend_research}', 'output_key': 'data_library', 'saves': []}, {'step': 7, 'phase': 2, 'id': 'blueprint', 'icon': '🗺', 'agent': 'Agent 7', 'label': 'Master Blueprint', 'description': '15-section article structure with word counts, data allocation map, keyword integration plan, visual asset specs (8-10), CTA strategy.', 'web_tools': False, 'system_prompt': 'You are a Master Content Architect. Build the complete writing blueprint.\n\n## MASTER OUTLINE (15 sections, 4,000-6,000 words main body)\n\nFor EACH section:\nSection title (H2) | Purpose | Target word count\nWhich statistics (by number) | Which case study | Which expert quote\nSubheadings (H3s) with word count targets\nData/example placement notes\nTransition to next section\n\nRequired sections:\n1. Opening (~500) -- hook, takeaways box, primary keyword\n2. Foundational Knowledge (~700)\n3-6. Core Concepts (~900 each)\n7. Advanced Strategies (~1,100)\n8. Implementation Framework (~1,300)\n9. Common Mistakes (~700)\n10. Tools & Solutions (~700)\n11. Advanced Considerations (~900)\n12. Expert Perspectives (~700)\n13. ROI & Business Case (~900)\n14. Quick Start Guide (~450)\n15. Conclusion (~450)\n\n## DATA ALLOCATION MAP\nMap every stat, case study, and expert quote to its section. Nothing unassigned.\n\n## KEYWORD INTEGRATION STRATEGY\nPrimary: title, H1, intro, 2+ H2s. Secondary: one per H2. Questions: as H3s.\n\n## VISUAL ASSET PLAN (8-10 assets)\nType | What it shows | Which section | Data source\n\n## CTA STRATEGY\nOpening CTA | 2-3 mid-article CTAs | Closing CTA\n\n## SUPPORTING CONTENT PLAN\n6 appendices | FAQ (30+ questions) | Glossary (30-50 terms) | Resources hub | Internal links (3-5)\n\nOutput: Complete blueprint. Writer can execute without asking a single clarifying question.', 'fields': [{'name': 'topic', 'label': 'Article Topic', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'topic'}, {'name': 'keyword_strategy', 'label': 'Keyword Strategy', 'type': 'textarea', 'rows': 3, 'placeholder': 'Auto-filled from Step 4', 'state_key': 'keyword_strategy'}, {'name': 'content_architecture', 'label': 'Content Architecture', 'type': 'textarea', 'rows': 3, 'placeholder': 'Auto-filled from Step 5', 'state_key': 'content_architecture'}, {'name': 'data_library', 'label': 'Data Library', 'type': 'textarea', 'rows': 3, 'placeholder': 'Auto-filled from Step 6', 'state_key': 'data_library'}], 'prompt': 'Build the complete master blueprint.\n\nTopic: {topic}\n\nKeyword Strategy:\n---\n{keyword_strategy}\n\nContent Architecture:\n---\n{content_architecture}\n\nData Library:\n---\n{data_library}', 'output_key': 'master_blueprint', 'saves': []}, {'step': 8, 'phase': 3, 'id': 'write', 'icon': '✍', 'agent': 'Agent 8', 'label': 'Authority Writer', 'description': 'Write 4,000-6,000 word article: answer-first formatting, E-E-A-T signals, burstiness, inline citations, all 15 sections per blueprint.', 'web_tools': False, 'system_prompt': "You are an Authority Content Writer. Transform the blueprint into a publication-ready draft.\n\n## WRITING MANDATE\nTarget: 4,000-6,000 words main article body.\nFollow the 15-section blueprint exactly.\nEvery factual claim must cite a source from the data library.\n\n## ANSWER-FIRST FORMATTING\nOpen every H2 with a 1-2 sentence direct answer.\nKey takeaways box in opening (3-5 bullets).\n\n## E-E-A-T SIGNALS\nEmbed expert quotes naturally. Reference case studies with specific outcomes.\nCite sources inline: (Gartner, 2024). Acknowledge complexity where honest.\n\n## BURSTINESS\nAlternate short (5-12 words), medium (15-25), complex (30-45) sentences.\nNever 3+ same length back-to-back.\n\n## BANNED WORDS (never use)\ndelve, tapestry, nuanced, multifaceted, game-changer, leverage (verb), synergy,\nparadigm shift, holistic, seamless, robust, cutting-edge, utilize, facilitate,\nmoreover, furthermore, in conclusion, it is worth noting\n\n## AI CITATION OPTIMIZATION\nStandalone declarative sentences for key facts.\nPrecise numbers (73%, not 'most'). Define terms on first use.\nFAQ-style Q&A for 3-5 key questions per major section.\n\n## OUTPUT FORMAT\nFull article with H2/H3 hierarchy, [VISUAL] markers, inline citations.\nEnd each section: <!-- [SECTION NAME: XXX words] -->\nEnd document with total word count. Zero placeholders.", 'fields': [{'name': 'topic', 'label': 'Article Topic', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'topic'}, {'name': 'master_blueprint', 'label': 'Master Blueprint', 'type': 'textarea', 'rows': 5, 'placeholder': 'Auto-filled from Step 7 output', 'state_key': 'master_blueprint'}, {'name': 'data_library', 'label': 'Data Library', 'type': 'textarea', 'rows': 4, 'placeholder': 'Auto-filled from Step 6 output', 'state_key': 'data_library'}], 'prompt': 'Write the complete authority article.\n\nTopic: {topic}\n\nMaster Blueprint:\n---\n{master_blueprint}\n\nData Library:\n---\n{data_library}', 'output_key': 'article_draft', 'saves': []}, {'step': 9, 'phase': 3, 'id': 'seo', 'icon': '📈', 'agent': 'Agent 9', 'label': 'SEO Optimization', 'description': 'Embed keywords, validate title/meta/H2 coverage, optimize featured snippets, add link anchors, readability scoring.', 'web_tools': False, 'system_prompt': 'You are an SEO Optimization Specialist. Optimize the article for maximum search visibility.\n\n## TASK 1: KEYWORD INTEGRATION AUDIT\nPrimary keyword in: title, first 100 words, 2+ H2s, meta description.\nSecondary: one per H2. Questions: as H3s. LSI: distributed naturally.\nDensity check: primary 0.5-1.5%.\n\n## TASK 2: TITLE & META OPTIMIZATION\nFinal title (60 chars max) | Meta description (150-160 chars) | URL slug\n\n## TASK 3: HEADING HIERARCHY\nOne H1. Logical H2 progression. H3s only under H2s. No skipped levels.\n\n## TASK 4: FEATURED SNIPPET OPTIMIZATION\n3-5 positions to win. For each: question | format | content adjustment.\n\n## TASK 5: LINK ANCHORS\nMark 3-5 internal link spots: [INTERNAL LINK: anchor text | target page topic]\n\n## TASK 6: EXTERNAL LINK AUDIT\nMark all source links: [EXTERNAL LINK: anchor | destination | rel=follow]\n\n## TASK 7: READABILITY\nTarget 8th-10th grade. Flag dense paragraphs (>5 lines).\n\n## OUTPUT\n1. SEO-optimized full article\n2. SEO checklist: pass/fail\n3. Recommended changes summary', 'fields': [{'name': 'topic', 'label': 'Article Topic', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'topic'}, {'name': 'keyword_strategy', 'label': 'Keyword Strategy', 'type': 'textarea', 'rows': 3, 'placeholder': 'Auto-filled from Step 4', 'state_key': 'keyword_strategy'}, {'name': 'article_draft', 'label': 'Article Draft', 'type': 'textarea', 'rows': 6, 'placeholder': 'Auto-filled from Step 8 output', 'state_key': 'article_draft'}], 'prompt': 'SEO-optimize the authority article.\n\nTopic: {topic}\n\nKeyword Strategy:\n---\n{keyword_strategy}\n\nArticle Draft:\n---\n{article_draft}', 'output_key': 'article_seo', 'saves': []}, {'step': 10, 'phase': 3, 'id': 'appx', 'icon': '📎', 'agent': 'Agent 10', 'label': 'Appendices & Supplements', 'description': 'Build 6 appendices (300-600 words each), FAQ (30+ Qs), glossary (40 terms), resources hub, internal/external link targets.', 'web_tools': False, 'system_prompt': "You are a Supplemental Content Architect. Build the complete supporting package.\n\n## DELIVERABLE 1: 6 APPENDICES (300-600 words each)\nThemes: (1) Step-by-step implementation | (2) Tools & resources reference |\n(3) Case study deep-dive | (4) Templates & frameworks | (5) Troubleshooting | (6) Advanced techniques\nEach: Title | Extends which section | Word count | Full text (no placeholders)\n\n## DELIVERABLE 2: FAQ SECTION (30+ questions)\nGroup into 4-6 clusters:\nQ: [question exactly as user types] | A: [2-5 direct sentences]\nMark 5 as 'Featured Snippet Targets'.\nClusters: Beginner | Implementation | Troubleshooting | Advanced | Cost/ROI\n\n## DELIVERABLE 3: GLOSSARY (30-50 terms)\nAlphabetical. Term: definition (1-3 plain English sentences). Related terms: [2-3]\n\n## DELIVERABLE 4: RESOURCES HUB\nTools | Research sources | Communities | Books (URL, best-for, price tier)\n\n## DELIVERABLE 5: INTERNAL LINK TARGETS (3-5)\nAnchor text | Target page | Placement | SEO rationale\n\n## DELIVERABLE 6: EXTERNAL AUTHORITY LINKS (5-8)\nAnchor text | Target publication | Domain authority | rel\n\nAll appendices fully written. All FAQ answers complete. No placeholder text.", 'fields': [{'name': 'topic', 'label': 'Article Topic', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'topic'}, {'name': 'article_seo', 'label': 'SEO-Optimized Article', 'type': 'textarea', 'rows': 5, 'placeholder': 'Auto-filled from Step 9 output', 'state_key': 'article_seo'}, {'name': 'data_library', 'label': 'Data Library', 'type': 'textarea', 'rows': 3, 'placeholder': 'Auto-filled from Step 6 output', 'state_key': 'data_library'}], 'prompt': 'Build the complete supplemental content package.\n\nTopic: {topic}\n\nArticle:\n---\n{article_seo}\n\nData Library:\n---\n{data_library}', 'output_key': 'appendices', 'saves': []}, {'step': 11, 'phase': 4, 'id': 'human', 'icon': '🙋', 'agent': 'Agent 11', 'label': 'Content Humanizer', 'description': 'Remove AI patterns, add burstiness and contractions, inject personal voice, vary sentence length, remove banned vocabulary.', 'web_tools': False, 'system_prompt': "You are a Content Humanization Specialist. Make this indistinguishable from expert human writing.\n\n## SENTENCE PATTERNS\nVary length dramatically: 6-word punches + 35-word complex sentences.\nAdd intentional fragments occasionally ('Worth it? Absolutely.').\nUse contractions: don't, won't, it's, here's, they're.\nStart some sentences with 'And', 'But', 'So', 'Because'.\n\n## BANNED AI VOCABULARY (eliminate every instance)\ndelve, tapestry, nuanced, multifaceted, game-changer, leverage (verb), synergy,\nparadigm shift, holistic, seamless, robust, cutting-edge, best-in-class, empower,\ntransformative, utilize, facilitate, endeavor, moreover, furthermore,\nin conclusion, it is worth noting, it goes without saying, as we navigate,\nin today's rapidly evolving, at the end of the day\n\n## STRUCTURAL CHANGES\nBreak any paragraph >5 lines into 2-3 shorter ones.\nReplace passive voice: 'it was found' -> 'researchers found'.\nAdd specific concrete details. Insert 1-2 rhetorical questions per major section.\n\n## VOICE MARKERS\nInclude an honest caveat per major section.\nUse specific, personal analogies. Drop occasional parenthetical observations.\n\n## OUTPUT\n1. Full humanized article\n2. Humanization report: changes made, banned words removed (count), top 3 impactful changes", 'fields': [{'name': 'article_seo', 'label': 'SEO Article', 'type': 'textarea', 'rows': 6, 'placeholder': 'Auto-filled from Step 9 output', 'state_key': 'article_seo'}], 'prompt': 'Humanize this authority article:\n\n{article_seo}', 'output_key': 'article_humanized', 'saves': []}, {'step': 12, 'phase': 4, 'id': 'head', 'icon': '🎯', 'agent': 'Agent 12', 'label': 'Headline Optimizer', 'description': 'Generate 20+ headline variants, score each on emotional impact/SEO/clarity, select winner, optimize all H2/H3 subheadings.', 'web_tools': False, 'system_prompt': 'You are a Headline and Subheading Optimization Specialist.\n\n## TASK 1: TITLE TAG -- 20 VARIANTS\nFor each: Title | Format | Emotional trigger | SEO score (1-10) | Clarity score (1-10) | Click score (1-10)\n\nFormats: 3 number-led | 3 how-to | 3 question | 3 emotional | 3 definitive guide | 3 contrarian | 2 curiosity gap\n\n## TASK 2: WINNER SELECTION\nPick the single best title. Explain why it beats the others.\n\n## TASK 3: SUBHEADING AUDIT\nFor each H2/H3: Current -> Improved -> Reason\nRules: promise a specific benefit | keyword where natural | front-load key word | no generic headers\n\n## TASK 4: HOOK SENTENCES\nFor each H2: write an improved opening hook sentence.\n\n## OUTPUT\n1. All 20 title variants with scores\n2. Recommended winner with rationale\n3. Updated subheadings list\n4. Updated hook sentences per section\n5. Full article with headlines/hooks applied', 'fields': [{'name': 'topic', 'label': 'Article Topic', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'topic'}, {'name': 'keyword_strategy', 'label': 'Primary Keyword', 'type': 'textarea', 'rows': 2, 'placeholder': 'Auto-filled from Step 4', 'state_key': 'keyword_strategy'}, {'name': 'article_humanized', 'label': 'Humanized Article', 'type': 'textarea', 'rows': 5, 'placeholder': 'Auto-filled from Step 11 output', 'state_key': 'article_humanized'}], 'prompt': 'Optimize all headlines and subheadings.\n\nTopic: {topic}\n\nKeyword Strategy:\n---\n{keyword_strategy}\n\nArticle:\n---\n{article_humanized}', 'output_key': 'article_headlines', 'saves': []}, {'step': 13, 'phase': 4, 'id': 'polish', 'icon': '✨', 'agent': 'Agent 13', 'label': 'Editorial Polish', 'description': 'Final line-edit pass: cut deadwood, fix transitions, strengthen weak sentences, check paragraph flow, verify word counts.', 'web_tools': False, 'system_prompt': "You are a Senior Editor. Perform a rigorous editorial polish pass.\n\n## CUT (ruthlessly remove)\nThroat-clearing openers ('In this article we will explore...')\nRedundant summaries. Hedge words: 'somewhat', 'rather', 'quite', 'very'.\nDouble-barrelled phrases: 'basic and fundamental', 'end result', 'future plans'.\nAny sentence that does not add information.\n\n## STRENGTHEN\nReplace weak verbs with specific, active verbs.\nEnsure every paragraph has one clear main point.\nVerify transitions feel earned, not mechanical.\nCheck each section opening delivers on the heading's promise.\n\n## STRUCTURE CHECK\nVerify key takeaways box in opening.\nCheck H2 -> H3 hierarchy is logical.\nEnsure conclusion drives toward clear action.\nVerify no section exceeds +-15% of target word count.\n\n## FLOW\nFlag awkward sentences: [AWKWARD] marker.\nConsistent tone throughout. No 3+ consecutive dense paragraphs.\n\n## OUTPUT\n1. Fully polished article\n2. Edit summary: what was cut | strengthened | words removed | readability improvement | top 5 edits", 'fields': [{'name': 'article_headlines', 'label': 'Article with Headlines', 'type': 'textarea', 'rows': 6, 'placeholder': 'Auto-filled from Step 12 output', 'state_key': 'article_headlines'}], 'prompt': 'Perform a final editorial polish pass:\n\n{article_headlines}', 'output_key': 'article_polished', 'saves': []}, {'step': 14, 'phase': 4, 'id': 'fact', 'icon': '✅', 'agent': 'Agent 14', 'label': 'Fact Check', 'description': 'Verify every statistic and claim against cited sources, flag unverifiable claims, confidence-score each data point.', 'web_tools': False, 'system_prompt': 'You are a Fact-Checking Specialist. Verify every claim in this authority article.\n\n## TASK 1: STATISTICS AUDIT\nFor every statistic:\nSTAT: [exact quote] | Source cited: [as written] | Verifiable: [Yes/No/Likely]\nConfidence: [High/Medium/Low] | Issues: [red flags] | Recommendation: [Keep/Update/Replace/Remove]\n\n## TASK 2: CLAIMS AUDIT\nFlag: no specific source | company blog | data >3 years old | speculative claim.\n\n## TASK 3: CONSISTENCY CHECK\nDo numbers contradict each other? Are percentages accurate? Do before/after claims add up?\n\n## TASK 4: ATTRIBUTION COMPLETENESS\nList all statistics with NO citation. Mark with [NEEDS SOURCE].\n\n## OUTPUT\n1. Full fact-check report\n2. Corrected article with [NEEDS SOURCE] and [FLAGGED] markers\n3. Priority fix list: top 5 issues to resolve before publishing', 'fields': [{'name': 'article_polished', 'label': 'Polished Article', 'type': 'textarea', 'rows': 6, 'placeholder': 'Auto-filled from Step 13 output', 'state_key': 'article_polished'}], 'prompt': 'Fact-check every claim and statistic:\n\n{article_polished}', 'output_key': 'factcheck_report', 'saves': []}, {'step': 15, 'phase': 4, 'id': 'cite', 'icon': '📋', 'agent': 'Agent 15', 'label': 'Citations Audit', 'description': 'Audit all citations for completeness, source quality, attribution patterns. Flag AI citation patterns. Score attribution authenticity.', 'web_tools': False, 'system_prompt': "You are a Citations Specialist. Audit all citations and attribution.\n\n## TASK 1: CITATION INVENTORY\nFor every citation: # | Citation as written | Type | Source tier | Format correct? | Issues\n\n## TASK 2: SOURCE QUALITY AUDIT\nPrimary or secondary? Recent? Biased? Accessible?\nRecommend upgrade if Tier 3 and Tier 1 equivalent exists.\n\n## TASK 3: AI CITATION PATTERN DETECTION\nFlag: 'research shows', 'experts agree', 'studies suggest' with no specific source.\nSuspiciously round numbers (80% of companies, no source).\nEm-dash heavy sentences near citations. Rule of three with no citations.\n\n## TASK 4: AUTHENTICITY SCORE (0-100)\nTier 1 sources (40 pts) | Completeness (30 pts) | Diversity (15 pts) | Recency (15 pts)\n\n## TASK 5: FORMAT STANDARDIZATION\nRecommend one consistent format. List corrections needed.\n\n## OUTPUT\n1. Full citation audit report\n2. Authenticity score with breakdown\n3. Priority fixes (top 5)\n4. Article with citations corrected/flagged", 'fields': [{'name': 'factcheck_report', 'label': 'Fact-Checked Article', 'type': 'textarea', 'rows': 6, 'placeholder': 'Auto-filled from Step 14 output', 'state_key': 'factcheck_report'}], 'prompt': 'Audit all citations and attribution:\n\n{factcheck_report}', 'output_key': 'citations_audit', 'saves': []}, {'step': 16, 'phase': 4, 'id': 'seoaudit', 'icon': '🔎', 'agent': 'Agent 16', 'label': 'SEO Audit', 'description': 'Final SEO validation: title tag, meta, heading hierarchy, keyword density, links, canonical, OG tags, schema readiness. Pass/fail checklist.', 'web_tools': False, 'system_prompt': 'You are an SEO Audit Specialist. Run the final pre-publish SEO validation.\n\n## CHECKLIST (Pass / Fail / Fix Required)\n\nON-PAGE BASICS:\nTitle tag: 60 chars max, primary keyword, compelling.\nMeta description: 150-160 chars, primary keyword, includes CTA.\nURL slug: short, keyword-rich, no stop words.\nH1: matches title, exactly one H1.\n\nHEADING HIERARCHY:\nLogical H2 progression. H3s only under H2s. Primary keyword in 2+ H2s.\n\nKEYWORD USAGE:\nPrimary density: 0.5-1.5%. In first 100 words. LSI distributed. No stuffing.\n\nLINKS:\n3-5 internal links. 3-5 external links to authoritative sources. Proper rel attributes.\n\nTECHNICAL:\nCanonical URL. OG meta tags. Schema markup specified. Images alt text. Read time.\n\nREADABILITY:\n8th-10th grade. No paragraph >5 lines. Bullets for 3+ items. Key terms bolded.\n\n## OUTPUT\n1. Full checklist Pass/Fail/Fix\n2. Critical issues (must fix)\n3. Recommended improvements\n4. Overall SEO readiness: X/100\n5. Article with SEO fixes applied', 'fields': [{'name': 'citations_audit', 'label': 'Citations-Audited Article', 'type': 'textarea', 'rows': 6, 'placeholder': 'Auto-filled from Step 15 output', 'state_key': 'citations_audit'}, {'name': 'keyword_strategy', 'label': 'Keyword Strategy', 'type': 'textarea', 'rows': 3, 'placeholder': 'Auto-filled from Step 4', 'state_key': 'keyword_strategy'}], 'prompt': 'Run the final SEO audit.\n\nKeyword Strategy:\n---\n{keyword_strategy}\n\nArticle:\n---\n{citations_audit}', 'output_key': 'seo_audit', 'saves': []}, {'step': 17, 'phase': 5, 'id': 'cms', 'icon': '🖥', 'agent': 'Agent 17', 'label': 'CMS Assembly', 'description': 'Complete CMS package: formatted Markdown, jump-link TOC, anchor IDs, read time, Article+FAQ schema JSON-LD, OG/Twitter tags, canonical URL.', 'web_tools': False, 'system_prompt': 'You are a CMS Publishing Specialist. Assemble the complete paste-and-publish package.\n\n## TASK 1: CONTENT FORMATTING\nCMS-ready Markdown: H2=##, H3=###, bold key terms, blockquotes for quotes, bullet lists.\n\n## TASK 2: TABLE OF CONTENTS\nJump-link TOC from all H2s and H3s. Anchor slugs: lowercase-with-hyphens.\nPlace after key takeaways box.\n\n## TASK 3: READ TIME\nWord count / 238 wpm = X min read. Display: **X min read - Updated [Month Year]**\n\n## TASK 4: ARTICLE SCHEMA (JSON-LD)\nComplete Article schema: headline, description, author, datePublished, dateModified, wordCount, articleSection, keywords.\n\n## TASK 5: FAQPAGE SCHEMA (JSON-LD)\nComplete FAQPage schema from the FAQ section (all 30+ questions).\n\n## TASK 6: OG + TWITTER CARD TAGS\nAll meta tags ready for <head>: og:title, og:description, og:type, og:image, article:published_time, twitter:card.\n\n## TASK 7: CANONICAL + ROBOTS\ncanonical href | robots: index, follow\n\n## TASK 8: ASSEMBLY CHECKLIST\nPass/fail: title 60 | meta 150-160 | keyword placement | links | schema valid | TOC anchors | word count.\n\n## OUTPUT ORDER\n1. METADATA BLOCK | 2. SCHEMA | 3. OG/TWITTER | 4. TABLE OF CONTENTS | 5. FULL ARTICLE | 6. APPENDICES | 7. ANCHOR ID REFERENCE | 8. ASSEMBLY CHECKLIST', 'fields': [{'name': 'seo_audit', 'label': 'SEO-Audited Article', 'type': 'textarea', 'rows': 5, 'placeholder': 'Auto-filled from Step 16 output', 'state_key': 'seo_audit'}, {'name': 'appendices', 'label': 'Appendices Package', 'type': 'textarea', 'rows': 3, 'placeholder': 'Auto-filled from Step 10 output', 'state_key': 'appendices'}], 'prompt': 'Assemble the complete CMS-ready publication package.\n\nArticle:\n---\n{seo_audit}\n\nAppendices:\n---\n{appendices}', 'output_key': 'cms_package', 'saves': []}, {'step': 18, 'phase': 5, 'id': 'social', 'icon': '📣', 'agent': 'Agent 18', 'label': 'Social & Metadata', 'description': 'Social variants for 5 platforms (Twitter thread, LinkedIn, Reddit, Facebook, Pinterest), email newsletter, analytics event setup.', 'web_tools': False, 'system_prompt': "You are a Content Distribution Specialist. Build the complete social media package.\n\n## DELIVERABLE 1: TWITTER/X THREAD (12-15 tweets)\nTweet 1 (Hook): bold claim or surprising stat, max 280 chars, must stop the scroll.\nTweets 2-10: numbered, one key insight per tweet.\nTweet 11: practical takeaway | Tweet 12: CTA | Tweet 13: engagement question.\nNo em-dashes. Conversational. Natural human voice.\n\n## DELIVERABLE 2: LINKEDIN POST (800-1,200 words)\nPattern interrupt opener | Personal story hook (2-3 sentences) |\n3-5 numbered insights | Broader implication | CTA | 3-5 hashtags\n\n## DELIVERABLE 3: REDDIT POST\nTitle: informational or question format, no marketing language.\nBody: value-first, helpful, self-promotion buried after value.\n\n## DELIVERABLE 4: FACEBOOK POST\nConversational opener | Key benefit in plain language | 1-2 stats | Link.\n\n## DELIVERABLE 5: PINTEREST\nPin title (100 chars) | Pin description (200-500 chars) | Board suggestion | Image brief.\n\n## DELIVERABLE 6: EMAIL NEWSLETTER\nSubject line (50 chars) | Preview text (90 chars) |\nBody: greeting | 2-sentence hook | 3 things they'll learn | 1 stat | CTA | P.S. line\n\n## DELIVERABLE 7: ANALYTICS EVENTS\n5 KPIs to track + gtag snippets for scroll depth, time milestones, CTA clicks.", 'fields': [{'name': 'topic', 'label': 'Article Topic', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'topic'}, {'name': 'cms_package', 'label': 'CMS Package', 'type': 'textarea', 'rows': 5, 'placeholder': 'Auto-filled from Step 17 output', 'state_key': 'cms_package'}], 'prompt': 'Build the complete social media and distribution package.\n\nTopic: {topic}\n\nCMS Package:\n---\n{cms_package}', 'output_key': 'social_package', 'saves': []}, {'step': 19, 'phase': 5, 'id': 'launch', 'icon': '🚀', 'agent': 'Agent 19', 'label': 'Launch Checklist', 'description': '30-day promotion calendar with daily actions, full pre/at/post-publish checklist, first-48-hours playbook, 30-day review framework.', 'web_tools': False, 'system_prompt': 'You are a Content Launch Strategist. Build the complete launch plan.\n\n## DELIVERABLE 1: 30-DAY PROMOTION CALENDAR\nDay | Platform | Action | Content/Notes\nDay 1: Twitter thread + LinkedIn post\nDay 2: Reddit submission\nDay 3: Email newsletter\nDay 7: Twitter recap tweet\nDay 14: LinkedIn follow-up angle\nDay 21: Quora answer\nDay 30: Metrics review\nFill ALL 30 days with specific actions.\n\n## DELIVERABLE 2: PRE-PUBLISH CHECKLIST\nTitle in SERP preview | Meta description | Featured image 1200x630 + alt text\nCanonical URL | Schema validated | Internal links | Mobile preview | Page speed 85+\n\n## DELIVERABLE 3: AT-PUBLISH ACTIONS\nSubmit to Google Search Console | Ping sitemap\nPost to primary social | Add internal link from 2 existing posts\n\n## DELIVERABLE 4: FIRST 48 HOURS\nMonitor GSC indexing | Reply to comments within 4 hours\nTrack traffic baseline | Reach out to 2-3 people mentioned\n\n## DELIVERABLE 5: 30-DAY REVIEW\nCheck rankings | Scroll depth + time-on-page\nBest traffic source | Comments -> FAQ expansion | Schedule 6-month refresh\n\nOutput: Complete, ready-to-execute plan. All 30 days filled with specific actions.', 'fields': [{'name': 'topic', 'label': 'Article Topic', 'type': 'text', 'placeholder': 'Auto-filled from Step 1', 'state_key': 'topic'}, {'name': 'social_package', 'label': 'Social Package', 'type': 'textarea', 'rows': 4, 'placeholder': 'Auto-filled from Step 18 output', 'state_key': 'social_package'}, {'name': 'cms_package', 'label': 'CMS Package', 'type': 'textarea', 'rows': 3, 'placeholder': 'Auto-filled from Step 17 output', 'state_key': 'cms_package'}], 'prompt': 'Build the complete launch plan.\n\nTopic: {topic}\n\nSocial Package:\n---\n{social_package}\n\nCMS Package:\n---\n{cms_package}', 'output_key': 'launch_plan', 'saves': []}]
+
+
+
+# ===========================================================================
+# AUTHORITY ARTICLE PIPELINE  (19 agents · 5 phases · 10,000–15,000 words)
+# ===========================================================================
+# NOTE: AUTHORITY_PHASES and AUTHORITY_STEPS are injected by build_authority.py
+# This file contains only the page-builder function, route, and endpoint.
+
+
+def _build_authority_page():
+    """Render the 19-agent, 5-phase authority article pipeline page."""
+
+    ATOTAL = len(AUTHORITY_STEPS)
+    GATE_BOUNDARY = {6: 1, 7: 2, 10: 3, 16: 4, 19: 5}
+    DELIVERABLES = [
+        ("Full Article",   "article_polished",  "authority_article.md"),
+        ("SEO Package",    "seo_audit",         "authority_seo.md"),
+        ("Appendices",     "appendices",        "authority_appendices.md"),
+        ("CMS Package",    "cms_package",       "authority_cms.md"),
+        ("Social Package", "social_package",    "authority_social.md"),
+        ("Launch Plan",    "launch_plan",       "authority_launch.md"),
+    ]
+
+    # ── Sidebar nav ──────────────────────────────────────────────────────────
+    nav_items = ""
+    prev_phase = 0
+    for s in AUTHORITY_STEPS:
+        n  = s["step"]
+        ph = s["phase"]
+        if ph != prev_phase:
+            ph_data = AUTHORITY_PHASES[ph - 1]
+            nav_items += (
+                '<div class="p-phase-header" style="border-left:3px solid ' +
+                ph_data["color"] + '">' + ph_data["icon"] +
+                ' Phase ' + str(ph) + ': ' + ph_data["label"] + '</div>'
+            )
+            prev_phase = ph
+        nav_items += (
+            '<div class="p-nav-item" id="p-nav-' + str(n) +
+            '" data-step="' + str(n) + '" onclick="showStep(' + str(n) + ')">' +
+            '<span class="p-nav-num" id="p-nav-num-' + str(n) + '">' + str(n) + '</span>' +
+            '<div class="p-nav-info"><div class="p-nav-label">' +
+            s["icon"] + ' ' + s["label"] + '</div>' +
+            '<div class="p-nav-agent">' + s["agent"] + '</div></div>' +
+            '<span class="p-nav-check" id="p-nav-check-' + str(n) + '"></span></div>'
+        )
+    nav_items += (
+        '<div class="p-phase-header" style="border-left:3px solid #3fb950">'
+        '&#128230; Phase 6: Final Deliverables</div>'
+        '<div class="p-nav-item" id="p-nav-20" data-step="20" onclick="showStep(20)">'
+        '<span class="p-nav-num" id="p-nav-num-20">&#128230;</span>'
+        '<div class="p-nav-info"><div class="p-nav-label">&#128230; Final Deliverables</div>'
+        '<div class="p-nav-agent">All outputs assembled</div></div></div>'
+    )
+
+    # ── Step panels ──────────────────────────────────────────────────────────
+    panels = ""
+    for s in AUTHORITY_STEPS:
+        n         = s["step"]
+        ph        = s["phase"]
+        ph_data   = AUTHORITY_PHASES[ph - 1]
+        color     = ph_data["color"]
+        ph_lbl    = ph_data["label"]
+        next_s    = AUTHORITY_STEPS[n] if n < ATOTAL else None
+        save_key  = s.get("output_key", "")
+        next_label = ("Step " + str(next_s["step"]) + ": " + next_s["label"]) if next_s else "Final Deliverables"
+
+        form_html = ""
+        for f in s.get("fields", []):
+            fname   = f["name"]
+            ftype   = f.get("type", "text")
+            sk      = f.get("state_key", "")
+            fbk     = f.get("fallback_key", "")
+            da      = ('data-state-key="' + sk + '"') if sk else ""
+            if fbk:
+                da += ' data-fallback-key="' + fbk + '"'
+            lbl     = f["label"]
+            ph_text = f.get("placeholder", "")
+            if ftype == "textarea":
+                rows = str(f.get("rows", 4))
+                form_html += (
+                    '<div class="form-group"><label class="form-label">' + lbl + '</label>'
+                    '<textarea name="' + fname + '" class="form-control" rows="' + rows +
+                    '" placeholder="' + ph_text + '" ' + da + '></textarea></div>'
+                )
+            else:
+                form_html += (
+                    '<div class="form-group"><label class="form-label">' + lbl + '</label>'
+                    '<input type="text" name="' + fname + '" class="form-control"'
+                    ' placeholder="' + ph_text + '" ' + da + '></div>'
+                )
+
+        web_badge = (
+            '<span style="font-size:10px;background:#1c2d3a;color:#58a6ff;padding:2px 6px;'
+            'border-radius:4px;margin-left:6px">&#127760; web</span>'
+        ) if s.get("web_tools") else ""
+
+        back_style = ' style="display:none"' if n == 1 else ""
+        prev_n = max(1, n - 1)
+
+        panels += (
+            '<div class="p-panel" id="p-panel-' + str(n) + '" style="display:none">'
+            '<div class="p-panel-header" style="border-left:4px solid ' + color + '">'
+            '<div>'
+            '<div class="p-panel-title">' + s["icon"] + ' Step ' + str(n) + ': ' + s["label"] + web_badge + '</div>'
+            '<div class="p-panel-meta">' + s["agent"] + ' &middot; Phase ' + str(ph) + ': ' + ph_lbl + '</div>'
+            '</div>'
+            '<span class="p-status-badge" id="p-status-' + str(n) + '">Ready</span>'
+            '</div>'
+            '<p style="color:var(--muted);font-size:13px;margin-bottom:16px">' + s["description"] + '</p>'
+            '<form id="p-form-' + str(n) + '" onsubmit="return false">'
+            + form_html +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">'
+            '<button type="button" class="btn btn-primary" onclick="runAuthorityStep(' + str(n) + ')">&#9654; Run ' + s["agent"] + '</button>'
+            '<button type="button" class="btn btn-ghost btn-sm" onclick="showStep(' + str(prev_n) + ')"' + back_style + '>&#8592; Back</button>'
+            '</div>'
+            '</form>'
+            '<div class="p-output-area" id="p-output-area-' + str(n) + '" style="display:none">'
+            '<div class="p-output-toolbar">'
+            '<span class="p-output-label">Output &mdash; ' + s["agent"] + '</span>'
+            '<div style="display:flex;gap:6px">'
+            '<button class="btn btn-ghost btn-sm" onclick="copyOutput()">&#10232; Copy</button>'
+            '<button class="btn btn-ghost btn-sm" onclick="downloadOutput(\'authority_step' + str(n) + '_' + s["id"] + '.md\')">&#11015; Save</button>'
+            '<button class="btn btn-secondary btn-sm" onclick="useAndNext(' + str(n) + ',\'' + save_key + '\',\'' + next_label.replace("'", "\\'") + '\')" id="p-use-btn-' + str(n) + '">'
+            'Use &#8594; ' + next_label + '</button>'
+            '</div>'
+            '</div>'
+            '<div class="p-output" id="p-output-' + str(n) + '"></div>'
+            '</div>'
+            '</div>'
+        )
+
+        # Quality gate after phase-boundary steps
+        if n in GATE_BOUNDARY:
+            ph_num = GATE_BOUNDARY[n]
+            ph_d   = AUTHORITY_PHASES[ph_num - 1]
+            fail_opts = "".join(
+                '<option value="' + str(v) + '">' + k + '</option>'
+                for k, v in ph_d["fail_routes"].items()
+            )
+            next_ph = str(ph_num + 1) if ph_num < 5 else "6"
+            panels += (
+                '<div class="p-gate" id="a-gate-' + str(ph_num) + '" style="display:none">'
+                '<div class="p-gate-inner">'
+                '<div class="p-gate-title">' + ph_d["icon"] + ' Phase ' + str(ph_num) + ' Quality Gate: ' + ph_d["label"] + '</div>'
+                '<p class="p-gate-check">' + ph_d["gate"] + '</p>'
+                '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">'
+                '<button class="btn btn-primary" onclick="passAuthorityGate(' + str(ph_num) + ')">&#10003; Pass &mdash; Continue to Phase ' + next_ph + '</button>'
+                '<div style="display:flex;align-items:center;gap:6px">'
+                '<select class="form-control" id="a-gate-fail-' + str(ph_num) + '" style="width:auto;padding:6px 10px;font-size:13px">'
+                + fail_opts +
+                '</select>'
+                '<button class="btn btn-ghost btn-sm" onclick="failAuthorityGate(' + str(ph_num) + ')">&#8635; Revise</button>'
+                '</div>'
+                '</div>'
+                '</div>'
+                '</div>'
+            )
+
+    # Final deliverables panel
+    dl_rows = ""
+    for label, key, fname in DELIVERABLES:
+        dl_rows += (
+            '<tr>'
+            '<td style="padding:8px 0;border-bottom:1px solid var(--border)">'
+            '<button class="btn btn-ghost btn-sm" onclick="downloadDeliverable(\'' + key + '\',\'' + fname + '\')">'
+            '&#11015; ' + label + '</button></td>'
+            '<td style="padding:8px 0;border-bottom:1px solid var(--border);color:var(--muted);font-size:12px">'
+            '<span id="a-dl-' + key + '-status">Waiting</span></td>'
+            '</tr>'
+        )
+
+    panels += (
+        '<div class="p-panel" id="p-panel-20" style="display:none">'
+        '<div class="p-panel-header" style="border-left:4px solid #3fb950">'
+        '<div>'
+        '<div class="p-panel-title">&#128230; Final Deliverables</div>'
+        '<div class="p-panel-meta">All 19 agents complete &middot; Authority article ready to publish</div>'
+        '</div>'
+        '</div>'
+        '<p style="color:var(--muted);font-size:13px;margin-bottom:20px">'
+        'Your 10,000&ndash;15,000 word authority article is complete. Download each deliverable below.'
+        '</p>'
+        '<table style="width:100%;border-collapse:collapse">' + dl_rows + '</table>'
+        '<div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap">'
+        '<button class="btn btn-primary" onclick="downloadAllAuthority()">&#11015; Download All</button>'
+        '<button class="btn btn-ghost btn-sm" onclick="resetAuthority()">&#8635; Start New Article</button>'
+        '</div>'
+        '</div>'
+    )
+
+    # Phase badge HTML
+    phase_badges = ""
+    for ph_data in AUTHORITY_PHASES:
+        c = ph_data["color"]
+        phase_badges += (
+            '<span style="font-size:11px;padding:3px 8px;border-radius:12px;'
+            'background:' + c + '22;color:' + c + ';border:1px solid ' + c + '55">'
+            + ph_data["icon"] + ' ' + ph_data["label"] + '</span>'
+        )
+
+    # Step metadata for JavaScript (output_key per step)
+    import json as _json
+    step_meta_js = _json.dumps([
+        {"output_key": s.get("output_key", ""), "saves": s.get("saves", [])}
+        for s in AUTHORITY_STEPS
+    ])
+    dl_keys_js   = _json.dumps([key  for _, key, _ in DELIVERABLES])
+    dl_fnames_js = _json.dumps([fname for _, _, fname in DELIVERABLES])
+    gate_js      = _json.dumps(GATE_BOUNDARY)
+
+    js_authority = (
+        "const AUTHORITY_STATE_KEY='cblog_authority';\n"
+        "const AUTHORITY_TOTAL=" + str(ATOTAL) + ";\n"
+        "const AUTHORITY_GATE_BOUNDARY=" + gate_js + ";\n"
+        "const STEP_META=" + step_meta_js + ";\n"
+        "const DL_KEYS=" + dl_keys_js + ";\n"
+        "const DL_FNAMES=" + dl_fnames_js + ";\n"
+        "\n"
+        "function aState(){try{return JSON.parse(sessionStorage.getItem(AUTHORITY_STATE_KEY)||'{}');}catch(e){return {};}}\n"
+        "function aSave(d){sessionStorage.setItem(AUTHORITY_STATE_KEY,JSON.stringify(d));}\n"
+        "\n"
+        "function showStep(n){\n"
+        "  document.querySelectorAll('.p-panel,.p-gate').forEach(el=>el.style.display='none');\n"
+        "  const panel=document.getElementById('p-panel-'+n);\n"
+        "  if(panel){panel.style.display='block';populateAuthorityFields(n);}\n"
+        "  document.querySelectorAll('.p-nav-item').forEach(el=>el.classList.remove('active'));\n"
+        "  const nav=document.getElementById('p-nav-'+n);\n"
+        "  if(nav) nav.classList.add('active');\n"
+        "  window._currentAuthorityStep=n;\n"
+        "}\n"
+        "\n"
+        "function populateAuthorityFields(n){\n"
+        "  const state=aState();\n"
+        "  const panel=document.getElementById('p-panel-'+n);\n"
+        "  if(!panel) return;\n"
+        "  panel.querySelectorAll('[data-state-key]').forEach(el=>{\n"
+        "    const key=el.getAttribute('data-state-key');\n"
+        "    const fb=el.getAttribute('data-fallback-key');\n"
+        "    const val=state[key]||(fb?state[fb]:'')||'';\n"
+        "    if(val&&!el.value) el.value=val;\n"
+        "  });\n"
+        "}\n"
+        "\n"
+        "function runAuthorityStep(n){\n"
+        "  const form=document.getElementById('p-form-'+n);\n"
+        "  const fields={};\n"
+        "  if(form) form.querySelectorAll('input,textarea,select').forEach(el=>{if(el.name) fields[el.name]=el.value;});\n"
+        "  const outputArea=document.getElementById('p-output-area-'+n);\n"
+        "  const outputEl=document.getElementById('p-output-'+n);\n"
+        "  const statusEl=document.getElementById('p-status-'+n);\n"
+        "  if(outputArea) outputArea.style.display='block';\n"
+        "  if(outputEl) outputEl.textContent='';\n"
+        "  if(statusEl){statusEl.textContent='Running...';statusEl.className='p-status-badge running';}\n"
+        "  let full=''; window._lastOutput='';\n"
+        "  fetchSSE('/api/authority-run',{step:n,fields},\n"
+        "    (chunk)=>{full+=chunk;window._lastOutput=full;if(outputEl) outputEl.textContent=full;},\n"
+        "    (err)=>{if(statusEl){statusEl.textContent='Error';statusEl.className='p-status-badge error';}if(outputEl) outputEl.textContent+='\\n\\n[Error: '+err+']';},\n"
+        "    ()=>{\n"
+        "      if(statusEl){statusEl.textContent='Complete';statusEl.className='p-status-badge complete';}\n"
+        "      const checkEl=document.getElementById('p-nav-check-'+n);\n"
+        "      if(checkEl) checkEl.textContent='\\u2713';\n"
+        "      const navNum=document.getElementById('p-nav-num-'+n);\n"
+        "      if(navNum) navNum.style.background='var(--success)';\n"
+        "      const state=aState();\n"
+        "      if(form) form.querySelectorAll('[name]').forEach(el=>{if(el.name&&el.value) state[el.name]=el.value;});\n"
+        "      const meta=STEP_META[n-1];\n"
+        "      if(meta&&meta.output_key&&full) state[meta.output_key]=full;\n"
+        "      state['_step'+n+'_done']=true;\n"
+        "      aSave(state);\n"
+        "      showAuthorityGateIfPhaseComplete(n);\n"
+        "    }\n"
+        "  );\n"
+        "}\n"
+        "\n"
+        "function useAndNext(n,saveKey,nextLabel){\n"
+        "  const state=aState();\n"
+        "  if(window._lastOutput&&saveKey) state[saveKey]=window._lastOutput;\n"
+        "  aSave(state);\n"
+        "  if(n<AUTHORITY_TOTAL) showStep(n+1); else showStep(20);\n"
+        "}\n"
+        "\n"
+        "function showAuthorityGateIfPhaseComplete(stepN){\n"
+        "  const phaseNum=AUTHORITY_GATE_BOUNDARY[stepN];\n"
+        "  if(!phaseNum) return;\n"
+        "  const gateEl=document.getElementById('a-gate-'+phaseNum);\n"
+        "  if(gateEl){\n"
+        "    document.querySelectorAll('.p-panel,.p-gate').forEach(el=>el.style.display='none');\n"
+        "    gateEl.style.display='block';\n"
+        "    document.getElementById('p-dl-all').disabled=false;\n"
+        "  }\n"
+        "}\n"
+        "\n"
+        "function passAuthorityGate(phaseNum){\n"
+        "  const entries=Object.entries(AUTHORITY_GATE_BOUNDARY);\n"
+        "  const entry=entries.find(([k,v])=>v===phaseNum);\n"
+        "  if(!entry) return;\n"
+        "  const afterStep=parseInt(entry[0])+1;\n"
+        "  if(afterStep>AUTHORITY_TOTAL) showStep(20); else showStep(afterStep);\n"
+        "}\n"
+        "function failAuthorityGate(phaseNum){\n"
+        "  const sel=document.getElementById('a-gate-fail-'+phaseNum);\n"
+        "  if(sel) showStep(parseInt(sel.value));\n"
+        "}\n"
+        "\n"
+        "function downloadDeliverable(key,filename){\n"
+        "  const state=aState(); const content=state[key]||'No output yet.';\n"
+        "  const a=document.createElement('a');\n"
+        "  a.href='data:text/markdown;charset=utf-8,'+encodeURIComponent(content);\n"
+        "  a.download=filename; a.click();\n"
+        "  const el=document.getElementById('a-dl-'+key+'-status');\n"
+        "  if(el) el.textContent='Downloaded';\n"
+        "}\n"
+        "\n"
+        "function downloadAllAuthority(){\n"
+        "  DL_FNAMES.forEach((f,i)=>{\n"
+        "    const state=aState(); const content=state[DL_KEYS[i]]||'No output yet.';\n"
+        "    setTimeout(()=>{const a=document.createElement('a');a.href='data:text/markdown;charset=utf-8,'+encodeURIComponent(content);a.download=f;a.click();},i*300);\n"
+        "  });\n"
+        "}\n"
+        "\n"
+        "function resetAuthority(){\n"
+        "  if(confirm('Reset all authority pipeline state? This cannot be undone.')){\n"
+        "    sessionStorage.removeItem(AUTHORITY_STATE_KEY);\n"
+        "    showStep(1);\n"
+        "    document.querySelectorAll('.p-nav-check').forEach(el=>el.textContent='');\n"
+        "    document.querySelectorAll('.p-nav-num').forEach(el=>el.style.background='');\n"
+        "  }\n"
+        "}\n"
+        "\n"
+        "async function runAllAuthority(){\n"
+        "  const btn=document.getElementById('a-oneshot-btn');\n"
+        "  if(btn){btn.disabled=true;btn.textContent='Running...';}\n"
+        "  for(let n=1;n<=AUTHORITY_TOTAL;n++){\n"
+        "    showStep(n);\n"
+        "    await new Promise((resolve)=>{\n"
+        "      const form=document.getElementById('p-form-'+n);\n"
+        "      const fields={};\n"
+        "      if(form) form.querySelectorAll('input,textarea,select').forEach(el=>{if(el.name) fields[el.name]=el.value;});\n"
+        "      const outputEl=document.getElementById('p-output-'+n);\n"
+        "      const statusEl=document.getElementById('p-status-'+n);\n"
+        "      if(statusEl){statusEl.textContent='Running...';statusEl.className='p-status-badge running';}\n"
+        "      let full='';\n"
+        "      fetchSSE('/api/authority-run',{step:n,fields},\n"
+        "        (chunk)=>{full+=chunk;window._lastOutput=full;if(outputEl) outputEl.textContent=full;},\n"
+        "        (err)=>{resolve();},\n"
+        "        ()=>{\n"
+        "          const state=aState();\n"
+        "          const meta=STEP_META[n-1];\n"
+        "          if(full&&meta&&meta.output_key) state[meta.output_key]=full;\n"
+        "          aSave(state);\n"
+        "          if(statusEl){statusEl.textContent='Complete';statusEl.className='p-status-badge complete';}\n"
+        "          const checkEl=document.getElementById('p-nav-check-'+n);\n"
+        "          if(checkEl) checkEl.textContent='\\u2713';\n"
+        "          resolve();\n"
+        "        }\n"
+        "      );\n"
+        "    });\n"
+        "    await new Promise(r=>setTimeout(r,800));\n"
+        "  }\n"
+        "  showStep(20);\n"
+        "  if(btn){btn.disabled=false;btn.textContent='\\u25b6\\u25b6 Run All (One-Shot)';}\n"
+        "}\n"
+        "\n"
+        "document.addEventListener('DOMContentLoaded',()=>{showStep(1);});\n"
+    )
+
+    body = (
+        '<div class="p-layout" style="padding-top:0">'
+        '<div class="p-header-bar" style="background:linear-gradient(135deg,#0d1117 0%,#1a1f2e 100%);padding:20px 32px;border-bottom:1px solid var(--border)">'
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">'
+        '<div>'
+        '<h2 style="margin:0;font-size:22px">&#127942; Authority Article Pipeline</h2>'
+        '<p style="margin:4px 0 0;color:var(--muted);font-size:13px">19 agents &middot; 5 phases &middot; targets 10,000&ndash;15,000 words</p>'
+        '</div>'
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+        '<div style="font-size:12px;color:var(--muted)">Phase progress:</div>'
+        + phase_badges +
+        '<button id="a-oneshot-btn" class="btn btn-secondary btn-sm" onclick="runAllAuthority()">&#9654;&#9654; Run All (One-Shot)</button>'
+        '</div>'
+        '</div>'
+        '</div>'
+        '<div style="display:flex;height:calc(100vh - 120px)">'
+        '<div class="pipeline-sidebar" style="width:240px;min-width:240px">'
+        '<div style="padding:12px 16px;border-bottom:1px solid var(--border)">'
+        '<a href="/" class="btn btn-ghost btn-sm" style="margin-bottom:8px;display:inline-flex">&#8592; Home</a>'
+        '<div style="font-weight:700;font-size:13px">&#127942; 19-Agent Authority Pipeline</div>'
+        '<div style="font-size:10px;color:var(--muted);margin-top:2px">5 phases &middot; 10K&ndash;15K word articles</div>'
+        '</div>'
+        '<div class="p-nav">' + nav_items + '</div>'
+        '<div class="pipeline-sidebar-footer">'
+        '<button class="btn btn-ghost btn-sm" onclick="resetAuthority()" style="width:100%;justify-content:center">&#8635; Reset</button>'
+        '<button class="btn btn-secondary btn-sm" id="p-dl-all" onclick="downloadAllAuthority()" disabled style="width:100%;justify-content:center">&#11015; Download All</button>'
+        '</div>'
+        '</div>'
+        '<div class="pipeline-main">' + panels + '</div>'
+        '</div>'
+        '</div>'
+        '<script>' + js_authority + '</script>'
+    )
+
+    pill_cls, pill_label = ("pill-ok", "Claude ✓") if claude_available() else ("pill-err", "Claude ✗")
+    return render_template_string(
+        "<!DOCTYPE html>\n"
+        "<html lang=\"en\">\n"
+        "<head>\n"
+        "<meta charset=\"UTF-8\">\n"
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n"
+        "<title>Authority Article Pipeline — Claude Blog</title>\n"
+        "<style>" + CSS + "</style>\n"
+        "</head>\n"
+        "<body>\n"
+        "<nav>\n"
+        "  <div class=\"nav-brand\">✍ Claude<em>Blog</em></div>\n"
+        "  <a href=\"/\" class=\"nav-link\">Home</a>\n"
+        "  <a href=\"/pipeline\" class=\"nav-link\">⚡ Pipeline</a>\n"
+        "  <a href=\"/authority\" class=\"nav-link active\" style=\"color:#d29922;font-weight:600\">\U0001f3c6 Authority</a>\n"
+        "  <a href=\"/run/keyword-research\" class=\"nav-link\">Keywords</a>\n"
+        "  <a href=\"/run/write\" class=\"nav-link\">Write</a>\n"
+        "  <a href=\"/run/humanize\" class=\"nav-link\">Humanize</a>\n"
+        "  <a href=\"/saved\" class=\"nav-link\">Saved</a>\n"
+        "  <a href=\"/settings\" class=\"nav-link\">Settings</a>\n"
+        "  <div class=\"nav-spacer\"></div>\n"
+        "  <div class=\"status-pill " + pill_cls + "\"><span class=\"dot\"></span>" + pill_label + "</div>\n"
+        "</nav>\n"
+        + body +
+        "\n<script>" + JS + "</script>\n"
+        "</body>\n"
+        "</html>"
+    )
+
+
+@app.route("/authority")
+def authority():
+    return _build_authority_page()
+
+
+@app.route("/api/authority-run", methods=["POST"])
+def api_authority_run():
+    if not claude_available():
+        return jsonify({"error": "claude CLI not found"}), 503
+
+    data      = request.get_json()
+    step_n    = int(data.get("step", 0))
+    fields    = data.get("fields", {})
+
+    if step_n < 1 or step_n > len(AUTHORITY_STEPS):
+        return jsonify({"error": f"Invalid step: {step_n}"}), 400
+
+    s             = AUTHORITY_STEPS[step_n - 1]
+    system_prompt = s["system_prompt"]
+
+    try:
+        user_msg = s["prompt"].format(**{k: v or "" for k, v in fields.items()})
+    except KeyError as e:
+        return jsonify({"error": f"Missing field: {e}"}), 400
+
+    web_tools     = s.get("web_tools", False)
+    allowed_tools = "WebSearch,WebFetch" if web_tools else ""
+
+    def generate():
+        model = get_model()
+        cmd = [
+            "claude", "-p", user_msg,
+            "--system-prompt", system_prompt,
+            "--output-format", "stream-json",
+            "--include-partial-messages", "--verbose",
+            "--no-session-persistence",
+        ]
+        if allowed_tools:
+            cmd += ["--allowedTools", allowed_tools]
+        else:
+            cmd += ["--tools", ""]
+        if model:
+            cmd += ["--model", model]
+
+        clean_env = {k: v for k, v in os.environ.items()
+                     if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY_ID", "ANTHROPIC_BASE_URL")}
+
+        proc = subprocess.Popen(
+            cmd, env=clean_env,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, bufsize=1, cwd=str(ROOT),
+        )
+
+        for line in proc.stdout:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                ev = json.loads(line)
+                if ev.get("type") == "stream_event":
+                    inner = ev.get("event", {})
+                    if inner.get("type") == "content_block_delta":
+                        delta = inner.get("delta", {})
+                        if delta.get("type") == "text_delta":
+                            text = delta.get("text", "")
+                            if text:
+                                yield f"data: {json.dumps({'text': text})}\n\n"
+                elif ev.get("type") == "result" and ev.get("is_error"):
+                    yield f"data: {json.dumps({'error': ev.get('result', 'Unknown error')})}\n\n"
+            except json.JSONDecodeError:
+                pass
+
+        proc.wait()
+        if proc.returncode not in (0, None):
+            err = proc.stderr.read() if proc.stderr else ""
+            if err:
+                yield f"data: {json.dumps({'error': err[:300]})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 # ---------------------------------------------------------------------------
