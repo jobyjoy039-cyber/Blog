@@ -1,13 +1,8 @@
 # Command Reference
 
-Complete reference for all 27 `/blog` slash commands (28 sub-skills total;
-`blog-chart` is internal-only, invoked from blog-write/blog-rewrite).
+Complete reference for all `/blog` slash commands.
 Every command is invoked through the main orchestrator
 (`skills/blog/SKILL.md`), which routes to the appropriate sub-skill.
-
-> **For detailed command flows beyond the overview table below, see each
-> sub-skill's `SKILL.md` directly. Sections in this file are abbreviated
-> for the v1.7.0 commands that joined after this doc was originally written.**
 
 ## Command Overview
 
@@ -15,26 +10,101 @@ Every command is invoked through the main orchestrator
 /blog <command> [arguments]
 ```
 
+### Core Writing Pipeline
+
 | Command | Sub-Skill | Description |
 |---------|-----------|-------------|
 | `write <topic>` | blog-write | Write a new blog post from scratch |
 | `rewrite <file>` | blog-rewrite | Optimize an existing blog post |
-| `analyze <file-or-url>` | blog-analyze | Audit blog quality with 0-100 score |
-| `brief <topic>` | blog-brief | Generate a detailed content brief |
-| `calendar [monthly\|quarterly]` | blog-calendar | Generate an editorial calendar |
-| `strategy <niche>` | blog-strategy | Blog strategy and topic ideation |
-| `outline <topic>` | blog-outline | SERP-informed outline generation |
-| `seo-check <file>` | blog-seo-check | Post-writing SEO validation |
-| `schema <file>` | blog-schema | Generate JSON-LD schema markup |
-| `repurpose <file>` | blog-repurpose | Repurpose content for other platforms |
-| `geo <file>` | blog-geo | AI citation optimization audit |
-| `audit [directory]` | blog-audit | Full-site blog health assessment |
-| `image [generate\|edit\|setup]` | blog-image | AI image generation and editing via Gemini |
-| `cannibalization [directory]` | blog-cannibalization | Detect keyword overlap across posts |
-| `factcheck <file>` | blog-factcheck | Verify statistics against cited sources |
-| `persona [create\|list\|apply]` | blog-persona | Manage writing personas and voice profiles |
-| `taxonomy [sync\|audit\|suggest]` | blog-taxonomy | Tag/category CMS management |
 | `update <file>` | blog-rewrite | Freshness update (alias for rewrite) |
+| `outline <topic>` | blog-outline | SERP-informed outline generation |
+| `brief <topic>` | blog-brief | Generate a detailed content brief |
+
+### Analysis & Quality
+
+| Command | Sub-Skill | Description |
+|---------|-----------|-------------|
+| `analyze <file-or-url>` | blog-analyze | Audit blog quality with 0-100 score |
+| `audit [directory]` | blog-audit | Full-site blog health assessment |
+| `seo-check <file>` | blog-seo-check | Post-writing SEO validation |
+| `sxo <file>` | blog-sxo | Search experience optimization audit |
+| `factcheck <file>` | blog-factcheck | Verify statistics against cited sources |
+| `geo <file>` | blog-geo | AI citation optimization audit |
+| `accessibility <file>` | blog-accessibility | WCAG 2.1 AA accessibility audit |
+| `decay [directory]` | blog-decay | Content decay detection and refresh queue |
+| `cannibalization [directory]` | blog-cannibalization | Detect keyword overlap across posts |
+
+### Strategy & Planning
+
+| Command | Sub-Skill | Description |
+|---------|-----------|-------------|
+| `strategy <niche>` | blog-strategy | Blog strategy and topic ideation |
+| `calendar [monthly\|quarterly]` | blog-calendar | Generate an editorial calendar |
+| `cluster <topic>` | blog-cluster | Semantic topic cluster planning and execution |
+| `brief <topic>` | blog-brief | Generate a detailed content brief |
+| `ab <file\|topic>` | blog-ab | Generate headline and meta A/B test variants |
+
+### Distribution & Repurposing
+
+| Command | Sub-Skill | Description |
+|---------|-----------|-------------|
+| `repurpose <file>` | blog-repurpose | Repurpose content for social/email/video |
+| `email-sequence <file>` | blog-email-sequence | Convert post to email drip sequence |
+| `quiz <file>` | blog-quiz | Generate interactive quiz from post |
+| `podcast-brief <file>` | blog-podcast-brief | Generate full podcast episode brief |
+
+### Technical & Schema
+
+| Command | Sub-Skill | Description |
+|---------|-----------|-------------|
+| `schema <file>` | blog-schema | Generate JSON-LD schema markup |
+| `chart [type]` | blog-chart | Generate inline SVG data visualizations (internal) |
+| `image [generate\|edit\|setup]` | blog-image | AI image generation and editing via Gemini |
+| `audio [narrate\|podcast]` | blog-audio | Generate audio narration via Gemini TTS |
+
+### Multilingual
+
+| Command | Sub-Skill | Description |
+|---------|-----------|-------------|
+| `translate <file> --locale <code>` | blog-translate | Translate post to target locale |
+| `localize <file> --locale <code>` | blog-localize | Cultural adaptation post-translation |
+| `locale-audit <file>` | blog-locale-audit | Multilingual content quality audit |
+| `multilingual <file> --locales <codes>` | blog-multilingual | One-command full multilingual pipeline |
+
+### CMS & Taxonomy
+
+| Command | Sub-Skill | Description |
+|---------|-----------|-------------|
+| `taxonomy [sync\|audit\|suggest]` | blog-taxonomy | Tag/category CMS management |
+
+### Voice & Persona
+
+| Command | Sub-Skill | Description |
+|---------|-----------|-------------|
+| `persona [create\|list\|apply]` | blog-persona | Manage writing personas and voice profiles |
+| `style learn [directory]` | blog-style | Extract author voice profile from existing posts |
+| `style apply <name> <file>` | blog-style | Apply a saved voice profile to a file |
+| `style compare <name> <file>` | blog-style | Score how closely a draft matches a voice profile |
+
+### Google & Analytics
+
+| Command | Sub-Skill | Description |
+|---------|-----------|-------------|
+| `google pagespeed <url>` | blog-google | PageSpeed Insights audit |
+| `google gsc-query <keyword>` | blog-google | Google Search Console performance query |
+| `google gsc-inspect <url>` | blog-google | URL inspection and indexing status |
+| `google ga4 <url>` | blog-google | GA4 organic traffic report |
+| `google crux <url>` | blog-google | Core Web Vitals 25-week history |
+| `google keywords <topic>` | blog-google | Keyword Planner data |
+| `google youtube <topic>` | blog-google | YouTube video search for embedding |
+
+### Content Assets
+
+| Command | Sub-Skill | Description |
+|---------|-----------|-------------|
+| `glossary [directory]` | blog-glossary | Build topic glossary from all posts |
+| `notebooklm [query\|list\|setup]` | blog-notebooklm | Query Google NotebookLM notebooks |
+| `flow [find\|optimize\|win]` | blog-flow | FLOW framework prompt library |
 
 ---
 
