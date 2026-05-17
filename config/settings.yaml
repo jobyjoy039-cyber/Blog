@@ -1,0 +1,40 @@
+anthropic:
+  model_heavy: claude-opus-4-7
+  model_standard: claude-sonnet-4-6
+  model_fast: claude-haiku-4-5
+  max_tokens: 8192
+  streaming: true
+  thinking:
+    adaptive: true
+    effort: high
+  caching:
+    enabled: true
+
+image_generation:
+  provider: openai
+  model: dall-e-3
+  size: 1024x1024
+  quality: standard
+  enabled: false  # Set to true and provide OPENAI_API_KEY to enable
+
+pipeline:
+  parallel_stages: false
+  output_dir: outputs
+  save_intermediate: true
+  verbose: true
+
+seo:
+  target_reading_level: 8
+  min_word_count: 1500
+  max_word_count: 5000
+  keyword_density_max: 0.02
+
+content:
+  default_tone: conversational
+  default_audience: general
+  language: en
+
+deep_research:
+  enabled: true
+  web_search: true
+  thinking_depth: high
