@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "metadata.json — output of Render Director",
+  "type": "object",
+  "required": ["title", "description", "tags", "chapters", "deliverables"],
+  "properties": {
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "chapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["time", "title"],
+        "properties": {
+          "time": { "type": "number", "minimum": 0 },
+          "title": { "type": "string" }
+        }
+      }
+    },
+    "deliverables": {
+      "type": "object",
+      "required": ["main", "shorts", "thumbnail", "captions"],
+      "properties": {
+        "main": { "type": "string" },
+        "shorts": { "type": "array", "items": { "type": "string" } },
+        "thumbnail": { "type": "string" },
+        "captions": { "type": "string" }
+      }
+    }
+  }
+}

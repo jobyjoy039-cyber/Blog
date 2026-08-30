@@ -1,0 +1,15 @@
+node_modules/
+project/input/*
+!project/input/.gitkeep
+project/assets/*/*
+!project/assets/*/.gitkeep
+project/timeline/*
+!project/timeline/.gitkeep
+project/renders/*
+!project/renders/.gitkeep
+project/cache/*
+!project/cache/.gitkeep
+project/logs/*
+!project/logs/.gitkeep
+project/output/*
+!project/output/.gitkeep

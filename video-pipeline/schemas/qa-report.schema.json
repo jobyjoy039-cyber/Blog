@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "qa-report.json — output of QA Director",
+  "type": "object",
+  "required": ["pass", "issues"],
+  "properties": {
+    "pass": { "type": "boolean" },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["shot_id", "agent", "severity", "problem", "action"],
+        "properties": {
+          "shot_id": { "type": "string" },
+          "agent": {
+            "type": "string",
+            "description": "the director whose stage must re-run",
+            "enum": [
+              "script-director", "storyboard-director", "asset-finder",
+              "image-generator", "broll-planner", "animation-director",
+              "remotion-builder", "audio-director", "music-director",
+              "foley-director", "subtitle-director", "render-director"
+            ]
+          },
+          "severity": { "type": "string", "enum": ["low", "medium", "high"] },
+          "problem": { "type": "string" },
+          "action": { "type": "string", "description": "what re-running that agent should change" }
+        }
+      }
+    }
+  }
+}

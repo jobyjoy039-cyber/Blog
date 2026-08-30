@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "scenes.json — output of Script Director",
+  "type": "object",
+  "required": ["scenes"],
+  "properties": {
+    "scenes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "text", "emotion", "pacing", "keywords", "visual_prompt", "music_mood"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^scene-\\d{3,}$" },
+          "text": { "type": "string" },
+          "start_time": { "type": "number", "minimum": 0 },
+          "end_time": { "type": "number", "minimum": 0 },
+          "emotion": { "type": "string" },
+          "pacing": { "type": "string", "enum": ["slow", "medium", "fast"] },
+          "keywords": { "type": "array", "items": { "type": "string" } },
+          "visual_prompt": { "type": "string" },
+          "music_mood": { "type": "string" }
+        }
+      }
+    }
+  }
+}

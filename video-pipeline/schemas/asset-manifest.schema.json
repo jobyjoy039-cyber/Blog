@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "asset-manifest.json — accumulated by Asset Finder, Image Generator, B-roll Planner, Animation Director, Music Director, Foley Director",
+  "type": "object",
+  "required": ["shots"],
+  "properties": {
+    "shots": {
+      "type": "object",
+      "description": "keyed by shot_id",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "stock_video": { "type": ["string", "null"] },
+          "ai_image": { "type": ["string", "null"] },
+          "ai_video": { "type": ["string", "null"] },
+          "avatar_clip": { "type": ["string", "null"] },
+          "overlay": { "type": ["string", "null"] },
+          "music": { "type": ["string", "null"] },
+          "foley": { "type": "array", "items": { "type": "string" } },
+          "sfx": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}
