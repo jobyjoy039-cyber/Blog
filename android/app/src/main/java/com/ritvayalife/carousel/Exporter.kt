@@ -58,6 +58,6 @@ object Exporter {
 
     fun copy(context: Context, label: String, text: String) {
         val clipboard = context.getSystemService(ClipboardManager::class.java)
-        clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
+        clipboard?.setPrimaryClip(ClipData.newPlainText(label, text))
     }
 }
