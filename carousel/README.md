@@ -1,7 +1,8 @@
 # Ritvayalife carousel renderer
 
 Turns carousel text (JSON) into Instagram-ready 1080 × 1350 PNGs in the Ritvayalife style
-(cream background, green headlines, Inter / Inter Tight, text-only).
+(cream background, green headlines, Inter / Inter Tight). Each slide gets soft grain, a leaf
+motif, and a rhythm line + rings that flow continuously from one slide into the next.
 
 ## Download ready-made slides
 
