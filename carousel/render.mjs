@@ -65,6 +65,11 @@ ol li span { font-family:'Inter Tight',sans-serif; font-weight:700; font-size:22
 .accent { color:var(--accent); }
 .cta { font-size:22px; font-weight:500; line-height:1.35; color:var(--head); }
 .signoff { font-size:16px; margin-top:24px; }
+.engage { margin-top:24px; }
+.engage div { display:flex; align-items:center; gap:14px; padding:13px 16px; margin-top:10px; font-size:17px; line-height:1.35; }
+.engage b { display:block; font-weight:500; color:var(--head); font-size:18px; }
+.engage svg { flex:none; }
+.follow { display:inline-block; margin-top:24px; padding:12px 22px; border-radius:999px; background:var(--accent); color:#fff; font-size:18px; font-weight:500; }
 `;
 
 const W = 540, H = 675;
@@ -117,6 +122,13 @@ function background(i, n) {
   </svg>`;
 }
 
+const icon = {
+  save: '<path d="M7 4h10v16l-5-4-5 4z"/>',
+  share: '<path d="M21 3 3 10l7 3 3 7z M10 13l11-10"/>',
+  follow: '<circle cx="9" cy="8" r="4"/><path d="M2 20c0-4 3-6 7-6s7 2 7 6 M19 8v6 M16 11h6"/>',
+};
+const iconSvg = k => `<svg width="30" height="30" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="rgba(46,94,78,.08)"/><g transform="translate(5 5) scale(.58)" fill="none" stroke="#2E5E4E" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">${icon[k]}</g></svg>`;
+
 const mark = `<svg width="11" height="11" viewBox="0 0 20 20"><path d="M3 17 C 3 8 9 3 17 3 C 17 11 12 17 3 17 Z M3 17 L 12 8" fill="none" stroke="#2E5E4E" stroke-width="1.6"/></svg>`;
 
 function slideHtml(s, label, i, n) {
@@ -132,6 +144,8 @@ function slideHtml(s, label, i, n) {
   if (s.list) parts.push(`<ol>${s.list.map((t, i) => `<li class="card"><span>0${i + 1}</span>${t}</li>`).join('')}</ol>`);
   if (s.statement) parts.push(`<div class="statement">${s.statement}</div>`);
   if (s.cta) parts.push(`<div class="cta-box"><div class="cta">${s.cta}</div>${s.signoff ? `<div class="signoff">${s.signoff}</div>` : ''}</div>`);
+  if (s.engage) parts.push(`<div class="engage">${s.engage.map(([k, t, d]) => `<div class="card">${iconSvg(k)}<span><b>${t}</b>${d}</span></div>`).join('')}</div>`);
+  if (s.follow) parts.push(`<div class="follow">${s.follow}</div>`);
   if (s.foot) parts.push(`<div class="foot">${s.foot}</div>`);
   return `<!doctype html><html><head><meta charset="utf-8">
 <style>${fontCss}${css}</style></head><body>

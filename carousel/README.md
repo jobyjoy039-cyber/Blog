@@ -6,7 +6,7 @@ motif, and a rhythm line + rings that flow continuously from one slide into the 
 
 ## Download ready-made slides
 
-Finished slides live in `output/<carousel>/01.png … 07.png`. Upload them to Instagram in
+Finished slides live in `output/<carousel>/01.png … 08.png`. Upload them to Instagram in
 number order.
 
 ## Make a new carousel
@@ -31,7 +31,8 @@ number order.
 | `flows` | `[["cause", "step", "effect"], …]` arrow chains |
 | `list` | numbered steps (01 / 02 / 03) |
 | `statement` | large insight text; wrap one phrase in `<span class="accent">` for gold |
-| `cta`, `signoff` | final slide |
+| `cta`, `signoff` | action slide (try-this step) |
+| `engage`, `follow` | closing Save / Share / Follow slide: `[["save"|"share"|"follow", "Title", "line"], …]` + gold button text |
 | `foot` | small footnote (e.g. "Modern lens: …") |
 
 Fonts: Inter and Inter Tight (SIL Open Font License), bundled in `fonts/`.
