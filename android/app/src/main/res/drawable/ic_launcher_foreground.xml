@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A single leaf with a midrib, in the brand green, inside the 72dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#1A2E5E4E"
+        android:strokeColor="#2E5E4E"
+        android:strokeWidth="3.2"
+        android:strokeLineJoin="round"
+        android:pathData="M36,72 C36,50 50,36 72,36 C72,58 58,72 36,72 Z" />
+    <path
+        android:strokeColor="#2E5E4E"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M36,72 L62,46" />
+    <path
+        android:strokeColor="#C2A87D"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M30,78 L36,72" />
+</vector>

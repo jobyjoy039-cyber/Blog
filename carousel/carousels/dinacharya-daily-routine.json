@@ -1,14 +1,92 @@
 {
   "slug": "dinacharya-daily-routine",
   "label": "RITVAYA • DAILY RHYTHM",
+  "caption": "Most people meet Dinacharya as a long morning list: tongue scraping, oil pulling, oil massage, meditation, yoga, warm water… and it lasts about a week.\n\nBut Dinacharya simply means \"daily conduct.\" In the Ashtanga Hridaya, it's a sequence that follows the day's natural rhythm:\n→ Morning (Kapha time): the body feels heavy, so wake early and move.\n→ Midday (Pitta time): digestion is strongest, so eat your main meal.\n→ Evening (Kapha again): the body slows down, so wind down and sleep by about 10.\n\nWhat modern research adds:\n• Regular sleep and wake times, morning light, and consistent meals support your body's circadian clock.\n• Tongue scraping can modestly reduce tongue coating and bad breath.\n• Oil pulling has limited evidence. It's an extra, never a replacement for brushing.\n\nSo don't start with 20 steps. Start with three anchors, then add one practice at a time once they feel automatic.\n\nStart with this today: pick one anchor and keep it for 3 days. Observe what changes.\n\n💬 Which anchor is hardest for you: waking, midday meal, or sleeping on time?\n\nEducational content, not medical advice. If you work night shifts or have a health condition, adapt the timings with your doctor.\n\nFollow @ritvayalife for more grounded clarity. Stay grounded.\n\n#Dinacharya #Ayurveda #AyurvedicRoutine #DailyRoutine #MorningRoutine #AyurvedaTips #CircadianRhythm #DailyRhythm #HolisticHealth #HealthyHabits #SlowLiving #MindfulLiving #WellnessRoutine #AyurvedicLifestyle #SelfCareRoutine",
   "slides": [
-    { "pos": "upper", "h1": "Dinacharya:<br>fewer steps,<br>placed in order." },
-    { "pos": "upper", "h2": "Tried a 20-step morning routine?", "body": ["It lasts a week.", "Then one busy day breaks the whole thing."] },
-    { "pos": "upper", "tag": "TRADITIONAL VIEW", "divider": true, "h2": "What Dinacharya means", "equation": "<i>Dina</i> + <i>charya</i>", "body": ["<i>Dina</i> = day. <i>Charya</i> = conduct.", "A daily sequence that aligns your body with nature’s cycles."] },
-    { "pos": "upper", "tag": "TRADITIONAL FRAMEWORK", "h2": "Why order matters", "rows": [["Kapha", "6–10 am · heavy → move"], ["Pitta", "10–2 · digestion peaks → eat"], ["Kapha", "6–10 pm · slowing → sleep"]], "foot": "Modern lens: consistent timing supports your circadian clock." },
-    { "pos": "upper", "h2": "Start with three anchors", "list": ["Wake at the same time daily, ideally before sunrise.", "Eat your largest meal around midday.", "Lights low after 9:30. Sleep by 10."], "foot": "Add later: tongue scraping, oil massage, gentle movement." },
-    { "pos": "low", "statement": "A routine you can keep beats a perfect one <span class=\"accent\">you abandon</span>." },
-    { "pos": "mid", "cta": "Pick one anchor.<br>Keep it for 3 days.<br>Observe what changes.", "signoff": "Stay grounded." },
-    { "pos": "mid", "tag": "BEFORE YOU GO", "h2": "Found this helpful?", "engage": [["save", "Save it", "Your simple daily rhythm."], ["share", "Share it", "With a friend rebuilding routine."], ["follow", "Follow", "For more grounded clarity."]], "follow": "Follow @ritvayalife" }
+    {
+      "pos": "upper",
+      "h1": "Dinacharya:<br>fewer steps,<br>placed in order."
+    },
+    {
+      "pos": "upper",
+      "h2": "Tried a 20-step morning routine?",
+      "body": [
+        "It lasts a week.",
+        "Then one busy day breaks the whole thing."
+      ]
+    },
+    {
+      "pos": "upper",
+      "tag": "TRADITIONAL VIEW",
+      "divider": true,
+      "h2": "What Dinacharya means",
+      "equation": "<i>Dina</i> + <i>charya</i>",
+      "body": [
+        "<i>Dina</i> = day. <i>Charya</i> = conduct.",
+        "A daily sequence that aligns your body with nature’s cycles."
+      ]
+    },
+    {
+      "pos": "upper",
+      "tag": "TRADITIONAL FRAMEWORK",
+      "h2": "Why order matters",
+      "rows": [
+        [
+          "Kapha",
+          "6–10 am · heavy → move"
+        ],
+        [
+          "Pitta",
+          "10–2 · digestion peaks → eat"
+        ],
+        [
+          "Kapha",
+          "6–10 pm · slowing → sleep"
+        ]
+      ],
+      "foot": "Modern lens: consistent timing supports your circadian clock."
+    },
+    {
+      "pos": "upper",
+      "h2": "Start with three anchors",
+      "list": [
+        "Wake at the same time daily, ideally before sunrise.",
+        "Eat your largest meal around midday.",
+        "Lights low after 9:30. Sleep by 10."
+      ],
+      "foot": "Add later: tongue scraping, oil massage, gentle movement."
+    },
+    {
+      "pos": "low",
+      "statement": "A routine you can keep beats a perfect one <span class=\"accent\">you abandon</span>."
+    },
+    {
+      "pos": "mid",
+      "cta": "Pick one anchor.<br>Keep it for 3 days.<br>Observe what changes.",
+      "signoff": "Stay grounded."
+    },
+    {
+      "pos": "mid",
+      "tag": "BEFORE YOU GO",
+      "h2": "Found this helpful?",
+      "engage": [
+        [
+          "save",
+          "Save it",
+          "Your simple daily rhythm."
+        ],
+        [
+          "share",
+          "Share it",
+          "With a friend rebuilding routine."
+        ],
+        [
+          "follow",
+          "Follow",
+          "For more grounded clarity."
+        ]
+      ],
+      "follow": "Follow @ritvayalife"
+    }
   ]
 }
