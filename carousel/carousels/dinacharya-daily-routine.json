@@ -1,0 +1,14 @@
+{
+  "slug": "dinacharya-daily-routine",
+  "label": "RITVAYA • DAILY RHYTHM",
+  "slides": [
+    { "pos": "upper", "h1": "Dinacharya:<br>fewer steps,<br>placed in order." },
+    { "pos": "upper", "h2": "Tried a 20-step morning routine?", "body": ["It lasts a week.", "Then one busy day breaks the whole thing."] },
+    { "pos": "upper", "tag": "TRADITIONAL VIEW", "divider": true, "h2": "What Dinacharya means", "equation": "<i>Dina</i> + <i>charya</i>", "body": ["<i>Dina</i> = day. <i>Charya</i> = conduct.", "A daily sequence that aligns your body with nature’s cycles."] },
+    { "pos": "upper", "tag": "TRADITIONAL FRAMEWORK", "h2": "Why order matters", "rows": [["Kapha", "6–10 am · heavy → move"], ["Pitta", "10–2 · digestion peaks → eat"], ["Kapha", "6–10 pm · slowing → sleep"]], "foot": "Modern lens: consistent timing supports your circadian clock." },
+    { "pos": "upper", "h2": "Start with three anchors", "list": ["Wake at the same time daily, ideally before sunrise.", "Eat your largest meal around midday.", "Lights low after 9:30. Sleep by 10."], "foot": "Add later: tongue scraping, oil massage, gentle movement." },
+    { "pos": "low", "statement": "A routine you can keep beats a perfect one <span class=\"accent\">you abandon</span>." },
+    { "pos": "mid", "cta": "Pick one anchor.<br>Keep it for 3 days.<br>Observe what changes.", "signoff": "Stay grounded." },
+    { "pos": "mid", "tag": "BEFORE YOU GO", "h2": "Found this helpful?", "engage": [["save", "Save it", "Your simple daily rhythm."], ["share", "Share it", "With a friend rebuilding routine."], ["follow", "Follow", "For more grounded clarity."]], "follow": "Follow @ritvayalife" }
+  ]
+}
