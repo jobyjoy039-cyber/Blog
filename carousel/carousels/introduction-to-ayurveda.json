@@ -1,0 +1,13 @@
+{
+  "slug": "introduction-to-ayurveda",
+  "label": "RITVAYA • BASICS",
+  "slides": [
+    { "pos": "upper", "h1": "Ayurveda is<br>a rhythm,<br>not a remedy." },
+    { "pos": "upper", "h2": "Most people meet it backwards.", "body": ["A herb here, a tip there.", "Scattered pieces rarely add up to change."] },
+    { "pos": "upper", "divider": true, "h2": "What Ayurveda actually means", "equation": "<i>Āyus</i> + <i>Veda</i>", "body": ["<i>Āyus</i> = life. <i>Veda</i> = knowledge.", "A 2,000+ year-old Indian system for staying well, not only treating illness."] },
+    { "pos": "upper", "tag": "TRADITIONAL FRAMEWORK", "h2": "The engine: three doshas", "rows": [["Vata", "movement · air + space"], ["Pitta", "transformation · fire + water"], ["Kapha", "structure · earth + water"]], "foot": "Balanced → steady energy. Out of balance → you feel “off.”" },
+    { "pos": "upper", "h2": "Where it lives: your day", "list": ["Wake and sleep at steady times.", "Eat your main meal at midday.", "Adjust food and routine with the seasons."], "foot": "Modern lens: consistent sleep and meal timing align with circadian research." },
+    { "pos": "low", "statement": "Ayurveda doesn’t add more to your life. It puts what you do <span class=\"accent\">in order</span>." },
+    { "pos": "mid", "cta": "Start with one: a steady wake time, for 3 days.", "signoff": "Stay grounded." }
+  ]
+}

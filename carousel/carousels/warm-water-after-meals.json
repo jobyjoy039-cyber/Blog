@@ -1,0 +1,13 @@
+{
+  "slug": "warm-water-after-meals",
+  "label": "RITVAYA • DIGESTION",
+  "slides": [
+    { "pos": "upper", "h1": "Warm water<br>after meals:<br>sip, don’t gulp." },
+    { "pos": "upper", "h2": "Heavy after eating?", "body": ["Bloated, sluggish, slow to settle.", "What you drink after the meal plays a part."] },
+    { "pos": "upper", "tag": "TRADITIONAL VIEW", "divider": true, "h2": "Ayurveda’s view: digestion is heat.", "body": ["<i>Agni</i>, the digestive fire, turns food into nourishment.", "Warm water supports it. A large cold glass dampens it."] },
+    { "pos": "upper", "h2": "How it works (traditionally)", "flows": [["Small warm sips", "agni stays steady", "food moves on"], ["Large or cold amounts", "fire dampened", "heaviness, bloating"]], "foot": "Modern lens: evidence is limited, but large volumes after meals can worsen reflux." },
+    { "pos": "upper", "h2": "During and after meals", "list": ["Warm, not hot. Comfortable to sip.", "Small sips, about half a cup.", "Larger glasses: 30–60 minutes later."] },
+    { "pos": "low", "statement": "It isn’t about more water. It’s about the right water, <span class=\"accent\">at the right time</span>." },
+    { "pos": "mid", "cta": "Try it with lunch for 3 days. Observe what changes.", "signoff": "Stay grounded." }
+  ]
+}
