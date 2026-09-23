@@ -11,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: android
@@ -27,3 +29,14 @@ jobs:
         with:
           name: ritvaya-carousel-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+      # Also keep the latest APK in the branch (apk/), so it can be fetched with git.
+      - name: Commit APK to branch
+        working-directory: .
+        run: |
+          mkdir -p apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk/ritvaya-carousels.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apk/ritvaya-carousels.apk
+          git commit -m "Update Ritvaya Carousels APK" || exit 0
+          git push
