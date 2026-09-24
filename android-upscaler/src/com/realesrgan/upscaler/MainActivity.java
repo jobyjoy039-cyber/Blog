@@ -49,13 +49,20 @@ public class MainActivity extends Activity {
     private static final int REQ_PICK = 1;
     private static final int REQ_WRITE_PERM = 2;
 
-    /** Largest output we allow, to keep the bitmap (4 bytes/pixel) within memory. */
-    private static final long MAX_OUTPUT_PIXELS = 32_000_000L;
-    private static final int TILE = 192;
+    /** Largest output we allow (8K is 33.2 MP), to keep the bitmap (4 bytes/pixel) within memory. */
+    private static final long MAX_OUTPUT_PIXELS = 34_000_000L;
+    /** Largest input we decode; bigger photos are subsampled while loading. */
+    private static final long MAX_DECODE_PIXELS = 16_000_000L;
     private static final int TILE_PAD = 10;
     private static final int PREVIEW_MAX = 2048;
 
-    private static final String[] MODEL_FILES = {"realesr-general-x4v3.onnx", "realesr-animevideov3.onnx"};
+    private static final String[] MODEL_FILES = {
+            "realesr-general-x4v3.onnx", "realesr-animevideov3.onnx", "RealESRGAN_x4plus.onnx"};
+    /** RRDBNet keeps 64-channel feature maps at 4x resolution, so it gets smaller tiles. */
+    private static final int[] MODEL_TILES = {192, 192, 96};
+    /** Output choices: plain factors, then 4K / 8K presets given as {long side, short side}. */
+    private static final String[] OUTPUT_LABELS = {"2x", "4x", "4K", "8K"};
+    private static final int[][] PRESETS = {null, null, {3840, 2160}, {7680, 4320}};
 
     private final Handler ui = new Handler(Looper.getMainLooper());
 
@@ -71,7 +78,7 @@ public class MainActivity extends Activity {
     private String sourceName = "image";
     private Bitmap input, inputPreview;
     private Bitmap result, resultPreview;
-    private int resultScale;
+    private String resultTag;
     private Uri savedUri;
     private boolean shareAfterSave;
 
@@ -207,23 +214,28 @@ public class MainActivity extends Activity {
         RadioButton m1 = new RadioButton(this);
         m1.setText("Anime / illustration (realesr-animevideov3, faster)");
         m1.setId(View.generateViewId());
+        RadioButton m2 = new RadioButton(this);
+        m2.setText("High quality photo (RealESRGAN_x4plus, 10-20x slower)");
+        m2.setId(View.generateViewId());
         modelGroup.addView(m0);
         modelGroup.addView(m1);
+        modelGroup.addView(m2);
         modelGroup.check(m0.getId());
         root.addView(modelGroup);
 
         root.addView(label("Output size", 15, true), lp(-1, -2, 0));
         scaleGroup = new RadioGroup(this);
         scaleGroup.setOrientation(RadioGroup.HORIZONTAL);
-        RadioButton s4 = new RadioButton(this);
-        s4.setText("4x");
-        s4.setId(View.generateViewId());
-        RadioButton s2 = new RadioButton(this);
-        s2.setText("2x");
-        s2.setId(View.generateViewId());
-        scaleGroup.addView(s4);
-        scaleGroup.addView(s2);
-        scaleGroup.check(s4.getId());
+        RadioButton first4x = null;
+        for (String l : OUTPUT_LABELS) {
+            RadioButton rb = new RadioButton(this);
+            rb.setText(l);
+            rb.setId(View.generateViewId());
+            rb.setPadding(0, 0, dp(12), 0);
+            scaleGroup.addView(rb);
+            if (l.equals("4x")) first4x = rb;
+        }
+        scaleGroup.check(first4x.getId());
         scaleGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
@@ -312,16 +324,72 @@ public class MainActivity extends Activity {
         return modelGroup.indexOfChild(modelGroup.findViewById(modelGroup.getCheckedRadioButtonId()));
     }
 
-    private int selectedScale() {
-        return scaleGroup.indexOfChild(scaleGroup.findViewById(scaleGroup.getCheckedRadioButtonId())) == 1 ? 2 : 4;
+    private int selectedOutput() {
+        return scaleGroup.indexOfChild(scaleGroup.findViewById(scaleGroup.getCheckedRadioButtonId()));
+    }
+
+    /** What to produce from a {@code w} x {@code h} input: final size, and whether two passes are needed. */
+    static final class Plan {
+        int inW, inH;      // size fed to the first pass (the input, possibly resized)
+        int midW, midH;    // first-pass output when twoPass
+        int outW, outH;
+        boolean twoPass;
+        String tag;
+        String problem;    // non-null if nothing can be done
+    }
+
+    private static Plan plan(int w, int h, int output) {
+        Plan p = new Plan();
+        p.inW = w;
+        p.inH = h;
+        int[] preset = PRESETS[output];
+        if (preset == null) {
+            int s = output == 0 ? 2 : 4;
+            p.tag = "x" + s;
+            long px = (long) w * h * s * s;
+            if (px > MAX_OUTPUT_PIXELS) {
+                // Too big: shrink the input so the result fits in memory.
+                double f = Math.sqrt(MAX_OUTPUT_PIXELS / (double) px);
+                p.inW = Math.max(1, (int) (w * f));
+                p.inH = Math.max(1, (int) (h * f));
+            }
+            p.outW = p.inW * s;
+            p.outH = p.inH * s;
+            return p;
+        }
+        p.tag = OUTPUT_LABELS[output];
+        // Fit inside the preset frame, turned to match the picture's orientation.
+        int boxW = w >= h ? preset[0] : preset[1];
+        int boxH = w >= h ? preset[1] : preset[0];
+        double f = Math.min(boxW / (double) w, boxH / (double) h);
+        if (f <= 1.0) {
+            p.problem = "This image is already " + p.tag + " size or larger.";
+            return p;
+        }
+        p.outW = Math.min(boxW, (int) Math.round(w * f));
+        p.outH = Math.min(boxH, (int) Math.round(h * f));
+        if (f > Upscaler.NET_SCALE) {
+            // Two passes. The first pass stops at a quarter of the final size so the second,
+            // expensive pass works on the smallest possible image and is a full 4x.
+            p.twoPass = true;
+            p.midW = (p.outW + 3) / 4;
+            p.midH = (p.outH + 3) / 4;
+            if (p.midW > w * 4 || p.midH > h * 4) {
+                // Tiny image (>16x needed): enlarge it conventionally first.
+                p.inW = (p.midW + 3) / 4;
+                p.inH = (p.midH + 3) / 4;
+            }
+        }
+        return p;
     }
 
     private void updateInfo() {
         if (input == null) return;
-        int s = selectedScale();
-        info.setText(input.getWidth() + " × " + input.getHeight() + "  →  "
-                + (input.getWidth() * s) + " × " + (input.getHeight() * s)
-                + "   (hold the picture to compare)");
+        Plan p = plan(input.getWidth(), input.getHeight(), selectedOutput());
+        String target = p.problem != null ? p.problem
+                : p.outW + " × " + p.outH + (p.twoPass ? " (2 passes, slower)" : "");
+        info.setText(input.getWidth() + " × " + input.getHeight() + "  →  " + target
+                + "\nHold the picture to compare with the original.");
     }
 
     // ---------------------------------------------------------------- loading
@@ -412,7 +480,7 @@ public class MainActivity extends Activity {
         if (o.outWidth <= 0 || o.outHeight <= 0) throw new Exception("unsupported format");
 
         // Decode with subsampling if the photo is far bigger than we can upscale anyway.
-        long maxIn = MAX_OUTPUT_PIXELS / 4;
+        long maxIn = MAX_DECODE_PIXELS;
         int sample = 1;
         while ((long) (o.outWidth / (sample * 2)) * (o.outHeight / (sample * 2)) >= maxIn) sample *= 2;
         BitmapFactory.Options d = new BitmapFactory.Options();
@@ -488,17 +556,18 @@ public class MainActivity extends Activity {
     private void startUpscale() {
         if (input == null || running) return;
         final int modelIdx = selectedModel();
-        final int scale = selectedScale();
-
+        final Plan plan = plan(input.getWidth(), input.getHeight(), selectedOutput());
+        if (plan.problem != null) {
+            Toast.makeText(this, plan.problem, Toast.LENGTH_LONG).show();
+            return;
+        }
         Bitmap src = input;
-        long outPixels = (long) src.getWidth() * src.getHeight() * scale * scale;
-        if (outPixels > MAX_OUTPUT_PIXELS) {
-            double f = Math.sqrt(MAX_OUTPUT_PIXELS / (double) outPixels);
-            int nw = Math.max(1, (int) (src.getWidth() * f));
-            int nh = Math.max(1, (int) (src.getHeight() * f));
-            src = Bitmap.createScaledBitmap(src, nw, nh, true);
-            Toast.makeText(this, "Image is large, input reduced to " + nw + " × " + nh
-                    + " to fit in memory", Toast.LENGTH_LONG).show();
+        if (plan.inW != src.getWidth() || plan.inH != src.getHeight()) {
+            src = Bitmap.createScaledBitmap(src, plan.inW, plan.inH, true);
+            if (plan.inW < input.getWidth()) {
+                Toast.makeText(this, "Image is large, input reduced to " + plan.inW + " × " + plan.inH
+                        + " to fit in memory", Toast.LENGTH_LONG).show();
+            }
         }
         final Bitmap work = src;
 
@@ -515,6 +584,7 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 final long start = SystemClock.elapsedRealtime();
+                Bitmap mid = null;
                 try {
                     if (upscaler == null || upscalerModel != modelIdx) {
                         if (upscaler != null) upscaler.close();
@@ -522,75 +592,122 @@ public class MainActivity extends Activity {
                         upscaler = new Upscaler(readAsset(MODEL_FILES[modelIdx]));
                         upscalerModel = modelIdx;
                     }
-                    final Bitmap out = upscaler.upscale(work, scale, TILE, TILE_PAD, new Upscaler.Listener() {
-                        @Override
-                        public void onProgress(final int done, final int total) {
-                            final long elapsed = SystemClock.elapsedRealtime() - start;
-                            ui.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    progress.setProgress(done * 1000 / total);
-                                    long eta = done > 0 ? elapsed * (total - done) / done : 0;
-                                    status.setText("Upscaling… " + (done * 100 / total) + "%  ·  "
-                                            + fmt(elapsed) + " elapsed" + (done < total ? ", ~" + fmt(eta) + " left" : ""));
-                                }
-                            });
-                        }
-
-                        @Override
-                        public boolean isCancelled() {
-                            return cancelled;
-                        }
-                    });
+                    int tile = MODEL_TILES[modelIdx];
+                    Bitmap out;
+                    if (plan.twoPass) {
+                        // Work is proportional to the pixels each pass reads.
+                        double w1 = (double) work.getWidth() * work.getHeight();
+                        double w2 = (double) plan.midW * plan.midH;
+                        mid = upscaler.upscale(work, plan.midW, plan.midH, tile, TILE_PAD,
+                                new ProgressListener(start, 0, w1 / (w1 + w2), "Pass 1 of 2"));
+                        out = upscaler.upscale(mid, plan.outW, plan.outH, tile, TILE_PAD,
+                                new ProgressListener(start, w1 / (w1 + w2), 1, "Pass 2 of 2"));
+                        mid.recycle();
+                        mid = null;
+                    } else {
+                        out = upscaler.upscale(work, plan.outW, plan.outH, tile, TILE_PAD,
+                                new ProgressListener(start, 0, 1, "Upscaling"));
+                    }
+                    final Bitmap result = out;
                     final Bitmap outPreview = scaleForPreview(out);
                     final long took = SystemClock.elapsedRealtime() - start;
                     ui.post(new Runnable() {
                         @Override
                         public void run() {
-                            finishRun(work, out, outPreview, scale, "Done in " + fmt(took) + ". Output "
-                                    + out.getWidth() + " × " + out.getHeight() + ".");
+                            finishRun(work, result, outPreview, plan.tag, "Done in " + fmt(took) + ". Output "
+                                    + result.getWidth() + " × " + result.getHeight() + ".");
                         }
                     });
                 } catch (Upscaler.CancelledException e) {
                     ui.post(new Runnable() {
                         @Override
                         public void run() {
-                            finishRun(work, null, null, scale, "Cancelled.");
+                            finishRun(work, null, null, null, "Cancelled.");
+                        }
+                    });
+                } catch (final OutOfMemoryError e) {
+                    ui.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            finishRun(work, null, null, null,
+                                    "Not enough memory for this size. Try a smaller output, or close other apps.");
                         }
                     });
                 } catch (final Throwable t) {
                     ui.post(new Runnable() {
                         @Override
                         public void run() {
-                            finishRun(work, null, null, scale, "Error: " + t);
+                            finishRun(work, null, null, null, "Error: " + t);
                         }
                     });
+                } finally {
+                    if (mid != null) mid.recycle();
                 }
             }
         }).start();
     }
 
-    private void finishRun(Bitmap work, Bitmap out, Bitmap outPreview, int scale, String message) {
+    /** Maps one pass's tile progress onto the [from, to] part of the overall progress bar. */
+    private final class ProgressListener implements Upscaler.Listener {
+        private final long start;
+        private final double from, to;
+        private final String label;
+
+        ProgressListener(long start, double from, double to, String label) {
+            this.start = start;
+            this.from = from;
+            this.to = to;
+            this.label = label;
+        }
+
+        @Override
+        public void onProgress(int done, int total) {
+            final double frac = from + (to - from) * done / total;
+            final int passPct = done * 100 / total;
+            final long elapsed = SystemClock.elapsedRealtime() - start;
+            ui.post(new Runnable() {
+                @Override
+                public void run() {
+                    progress.setProgress((int) (frac * 1000));
+                    long eta = frac > 0 ? (long) (elapsed * (1 - frac) / frac) : 0;
+                    status.setText(label + "… " + passPct + "%  ·  " + fmt(elapsed) + " elapsed"
+                            + (frac < 1 ? ", ~" + fmt(eta) + " left" : ""));
+                }
+            });
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return cancelled;
+        }
+    }
+
+    private void finishRun(Bitmap work, Bitmap out, Bitmap outPreview, String tag, String message) {
         running = false;
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         status.setText(message);
         if (out != null) {
             result = out;
-            resultScale = scale;
+            resultTag = tag;
             resultPreview = outPreview;
             preview.setImageBitmap(resultPreview);
-            showCrops(work, out, scale);
+            showCrops(work, out);
         }
         if (work != input) work.recycle();
         refreshButtons();
     }
 
-    private void showCrops(Bitmap in, Bitmap out, int scale) {
-        int cs = Math.min(96, Math.min(in.getWidth(), in.getHeight()));
+    private void showCrops(Bitmap in, Bitmap out) {
+        double f = out.getWidth() / (double) in.getWidth();
+        // At most 96 source pixels, and at most ~1024 output pixels so the view stays light.
+        int cs = Math.max(1, Math.min(Math.min(96, (int) (1024 / f)), Math.min(in.getWidth(), in.getHeight())));
+        int outCs = Math.min((int) Math.round(cs * f), Math.min(out.getWidth(), out.getHeight()));
         int cx = (in.getWidth() - cs) / 2, cy = (in.getHeight() - cs) / 2;
+        int ox = Math.min((int) Math.round(cx * f), out.getWidth() - outCs);
+        int oy = Math.min((int) Math.round(cy * f), out.getHeight() - outCs);
         Bitmap before = Bitmap.createBitmap(in, cx, cy, cs, cs);
-        before = Bitmap.createScaledBitmap(before, cs * scale, cs * scale, true);
-        Bitmap after = Bitmap.createBitmap(out, cx * scale, cy * scale, cs * scale, cs * scale);
+        before = Bitmap.createScaledBitmap(before, outCs, outCs, true);
+        Bitmap after = Bitmap.createBitmap(out, ox, oy, outCs, outCs);
         cropBefore.setImageBitmap(before);
         cropAfter.setImageBitmap(after);
         cropRow.setVisibility(View.VISIBLE);
@@ -625,7 +742,7 @@ public class MainActivity extends Activity {
         }
         final Bitmap bmp = result;
         final boolean png = bmp.hasAlpha();
-        final String name = sourceName + "_x" + resultScale
+        final String name = sourceName + "_" + resultTag
                 + "_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date())
                 + (png ? ".png" : ".jpg");
         running = true;

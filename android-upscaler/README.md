@@ -9,13 +9,22 @@ Needs Android 7.0+ on an ARM phone (almost all phones are ARM).
 ## Using it
 1. Tap **Choose image**. You can also share an image to the app from your gallery.
 2. Pick a model:
-   * **Photo / general** (`realesr-general-x4v3`): for photos and most images.
+   * **Photo / general** (`realesr-general-x4v3`): for photos and most images. Fast.
    * **Anime / illustration** (`realesr-animevideov3`): for drawings and cartoons. About twice as fast.
-3. Pick **4x** or **2x**, then tap **Upscale**. Press and hold the picture to compare with the original.
+   * **High quality photo** (`RealESRGAN_x4plus`): the sharpest results for photos, but 10–20x slower.
+3. Pick the output size, then tap **Upscale**. Press and hold the picture to compare with the original.
+   * **2x / 4x**: multiplies the size.
+   * **4K / 8K**: fits the image into 3840 × 2160 or 7680 × 4320 (turned for portrait images), keeping
+     its shape. If more than 4x is needed, the app runs two passes automatically. The first pass stops at
+     a quarter of the final size, so the slow second pass is as small as possible.
 4. **Save to gallery** writes to `Pictures/Real-ESRGAN/`. PNG is used when the image has transparency, JPEG otherwise.
 
-Speed depends on the phone. A 1-megapixel photo takes roughly 30–90 s with the general model.
-Very large inputs are scaled down first so the output stays under 32 MP and fits in memory.
+Rough times on a recent phone, general model: 4K from 1080p takes about 1–2 minutes, 8K from 1080p about 2–5 minutes.
+The high-quality model can take 10–30+ minutes for 8K.
+
+Each pass produces the requested size directly: every tile's 4x output is scaled down to the target
+before it's stored. The full 4x image never exists in memory, so 8K (33 MP) needs about 130 MB for the result.
+Images that are already at the chosen 4K/8K size are left alone. Very large photos are subsampled while loading.
 
 ## Building
 `./build.sh` builds the APK without Gradle or the Google SDK download. It uses Ubuntu's Android packages:
@@ -28,8 +37,8 @@ pip install onnx numpy   # only needed if assets/*.onnx are missing
 
 What the script does:
 * `tools/convert_to_onnx.py` turns the official `.pth` weights into ONNX. It reads the PyTorch checkpoint
-  without needing PyTorch installed and builds the SRVGGNetCompact graph (conv + PReLU stack, pixel shuffle,
-  plus the nearest-upsampled input).
+  without needing PyTorch installed and rebuilds the network graph. That's SRVGGNetCompact for the two fast models
+  and RRDBNet (23 blocks) for `RealESRGAN_x4plus`.
 * Downloads `onnxruntime-android` 1.20.0 from Maven Central. That's the newest release with Java 8 bytecode,
   which is what `dx` can read. `tools/TensorInfo.java` swaps out the one lambda that `dx` can't convert.
 * Only `arm64-v8a` and `armeabi-v7a` native libraries are included. Set `ABIS="arm64-v8a armeabi-v7a x86_64"`

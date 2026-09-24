@@ -12,9 +12,10 @@ B=build
 mkdir -p "$B"
 
 # 1. Models: convert the official Real-ESRGAN weights to ONNX.
-for m in realesr-general-x4v3 realesr-animevideov3; do
+for m in realesr-general-x4v3 realesr-animevideov3 RealESRGAN_x4plus; do
   if [ ! -f "assets/$m.onnx" ]; then
-    [ -f "$B/$m.pth" ] || curl -fsSL -o "$B/$m.pth" "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/$m.pth"
+    case $m in RealESRGAN_x4plus) rel=v0.1.0 ;; *) rel=v0.2.5.0 ;; esac
+    [ -f "$B/$m.pth" ] || curl -fsSL -o "$B/$m.pth" "https://github.com/xinntao/Real-ESRGAN/releases/download/$rel/$m.pth"
     (cd "$B" && python3 ../tools/convert_to_onnx.py && mv -f ./*.onnx ../assets/)
   fi
 done

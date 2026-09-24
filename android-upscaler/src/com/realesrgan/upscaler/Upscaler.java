@@ -41,15 +41,22 @@ public final class Upscaler implements AutoCloseable {
     }
 
     /**
-     * @param outScale final scale, 4 or 2 (2 = the 4x result box-filtered down by half)
+     * Upscales {@code src} to exactly {@code outW} x {@code outH}, which must be at most 4x the source.
+     * Each tile's 4x network output is area-averaged down to the target grid straight away, so the
+     * full 4x image never has to exist in memory.
      */
-    public Bitmap upscale(Bitmap src, int outScale, int tile, int pad, Listener listener)
+    public Bitmap upscale(Bitmap src, int outW, int outH, int tile, int pad, Listener listener)
             throws OrtException, CancelledException {
         final int w = src.getWidth();
         final int h = src.getHeight();
-        final int div = NET_SCALE / outScale;
+        if (outW > w * NET_SCALE || outH > h * NET_SCALE) {
+            throw new IllegalArgumentException("a single pass can upscale at most " + NET_SCALE + "x");
+        }
         final boolean alpha = src.hasAlpha();
-        Bitmap out = Bitmap.createBitmap(w * outScale, h * outScale, Bitmap.Config.ARGB_8888);
+        // Size of one output pixel measured in network-output (4x) pixels.
+        final double spanX = NET_SCALE * (double) w / outW;
+        final double spanY = NET_SCALE * (double) h / outH;
+        Bitmap out = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888);
 
         int tilesX = (w + tile - 1) / tile;
         int tilesY = (h + tile - 1) / tile;
@@ -70,66 +77,89 @@ public final class Upscaler implements AutoCloseable {
 
                 int[] in = new int[pw * ph];
                 src.getPixels(in, 0, pw, px0, py0, pw, ph);
-                float[] chw = new float[3 * pw * ph];
-                int plane = pw * ph;
-                for (int i = 0; i < plane; i++) {
-                    int c = in[i];
-                    chw[i] = ((c >> 16) & 0xff) / 255f;
-                    chw[plane + i] = ((c >> 8) & 0xff) / 255f;
-                    chw[2 * plane + i] = (c & 0xff) / 255f;
-                }
+                float[] res = run(in, pw, ph);
 
-                float[] res;
-                OnnxTensor t = OnnxTensor.createTensor(env, FloatBuffer.wrap(chw), new long[]{1, 3, ph, pw});
-                try {
-                    OrtSession.Result r = session.run(Collections.singletonMap(inputName, t));
-                    try {
-                        FloatBuffer fb = ((OnnxTensor) r.get(0)).getFloatBuffer();
-                        res = new float[fb.remaining()];
-                        fb.get(res);
-                    } finally {
-                        r.close();
-                    }
-                } finally {
-                    t.close();
+                // Output pixels whose centre falls in this (un-padded) tile.
+                int ox0 = (int) ((long) x0 * outW / w), ox1 = (int) ((long) x1 * outW / w);
+                int oy0 = (int) ((long) y0 * outH / h), oy1 = (int) ((long) y1 * outH / h);
+                int tw = ox1 - ox0, th = oy1 - oy0;
+                if (tw <= 0 || th <= 0) {
+                    done++;
+                    continue;
                 }
-
-                // Copy the un-padded part of the tile into the output.
                 int ow = pw * NET_SCALE, oh = ph * NET_SCALE, oplane = ow * oh;
-                int tw = (x1 - x0) * outScale, th = (y1 - y0) * outScale;
-                int offX = (x0 - px0) * NET_SCALE, offY = (y0 - py0) * NET_SCALE;
+                int[] colA = new int[tw], colB = new int[tw];
+                for (int i = 0; i < tw; i++) {
+                    double s0 = (ox0 + i) * spanX - px0 * NET_SCALE;
+                    colA[i] = clampI((int) Math.floor(s0 + 1e-6), 0, ow - 1);
+                    colB[i] = clampI((int) Math.ceil(s0 + spanX - 1e-6), colA[i] + 1, ow);
+                }
                 int[] pix = new int[tw * th];
-                float inv = 1f / (div * div);
-                for (int oy = 0; oy < th; oy++) {
-                    for (int ox = 0; ox < tw; ox++) {
+                for (int j = 0; j < th; j++) {
+                    double t0 = (oy0 + j) * spanY - py0 * NET_SCALE;
+                    int ra = clampI((int) Math.floor(t0 + 1e-6), 0, oh - 1);
+                    int rb = clampI((int) Math.ceil(t0 + spanY - 1e-6), ra + 1, oh);
+                    for (int i = 0; i < tw; i++) {
                         float r = 0, g = 0, b = 0;
-                        for (int dy = 0; dy < div; dy++) {
-                            int row = (offY + oy * div + dy) * ow + offX + ox * div;
-                            for (int dx = 0; dx < div; dx++) {
-                                int k = row + dx;
+                        int ca = colA[i], cb = colB[i];
+                        for (int yy = ra; yy < rb; yy++) {
+                            int row = yy * ow;
+                            for (int xx = ca; xx < cb; xx++) {
+                                int k = row + xx;
                                 r += res[k];
                                 g += res[oplane + k];
                                 b += res[2 * oplane + k];
                             }
                         }
+                        float inv = 1f / ((rb - ra) * (cb - ca));
                         int a = 255;
                         if (alpha) {
                             // Bilinear upsample of the source alpha channel (RealESRGANer uses a
                             // resize for alpha too when the alpha model isn't used).
-                            float sx = (x0 + (ox + 0.5f) / outScale) - 0.5f - px0;
-                            float sy = (y0 + (oy + 0.5f) / outScale) - 0.5f - py0;
+                            float sx = (float) ((ox0 + i + 0.5) * w / outW - 0.5 - px0);
+                            float sy = (float) ((oy0 + j + 0.5) * h / outH - 0.5 - py0);
                             a = bilinearAlpha(in, pw, ph, sx, sy);
                         }
-                        pix[oy * tw + ox] = (a << 24) | (clamp(r * inv) << 16) | (clamp(g * inv) << 8) | clamp(b * inv);
+                        pix[j * tw + i] = (a << 24) | (clamp(r * inv) << 16) | (clamp(g * inv) << 8) | clamp(b * inv);
                     }
                 }
-                out.setPixels(pix, 0, tw, x0 * outScale, y0 * outScale, tw, th);
+                out.setPixels(pix, 0, tw, ox0, oy0, tw, th);
 
                 done++;
                 if (listener != null) listener.onProgress(done, total);
             }
         }
         return out;
+    }
+
+    /** Runs the network on one ARGB tile; returns the planar RGB 4x output. */
+    private float[] run(int[] in, int pw, int ph) throws OrtException {
+        int plane = pw * ph;
+        float[] chw = new float[3 * plane];
+        for (int i = 0; i < plane; i++) {
+            int c = in[i];
+            chw[i] = ((c >> 16) & 0xff) / 255f;
+            chw[plane + i] = ((c >> 8) & 0xff) / 255f;
+            chw[2 * plane + i] = (c & 0xff) / 255f;
+        }
+        OnnxTensor t = OnnxTensor.createTensor(env, FloatBuffer.wrap(chw), new long[]{1, 3, ph, pw});
+        try {
+            OrtSession.Result r = session.run(Collections.singletonMap(inputName, t));
+            try {
+                FloatBuffer fb = ((OnnxTensor) r.get(0)).getFloatBuffer();
+                float[] res = new float[fb.remaining()];
+                fb.get(res);
+                return res;
+            } finally {
+                r.close();
+            }
+        } finally {
+            t.close();
+        }
+    }
+
+    private static int clampI(int v, int lo, int hi) {
+        return v < lo ? lo : (v > hi ? hi : v);
     }
 
     private static int bilinearAlpha(int[] in, int w, int h, float x, float y) {
