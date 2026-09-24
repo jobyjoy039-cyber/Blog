@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Runs PixelBoost's MainActivity on the JVM with Robolectric (real Skia rendering) to test the
+     full UI flow and to capture Play Store screenshots. Run ./run.sh, not mvn directly. -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.jobyjoy.pixelboost</groupId>
+  <artifactId>screenshots</artifactId>
+  <version>1</version>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <android.jar>/usr/lib/android-sdk/platforms/android-23/android.jar</android.jar>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.robolectric</groupId>
+      <artifactId>robolectric</artifactId>
+      <version>4.17</version>
+      <scope>test</scope>
+      <!-- Hosted only on Google's Maven; not needed without androidx.test. -->
+      <exclusions>
+        <exclusion><groupId>androidx.test</groupId><artifactId>*</artifactId></exclusion>
+        <exclusion><groupId>androidx.test.espresso</groupId><artifactId>*</artifactId></exclusion>
+        <exclusion><groupId>androidx.test.services</groupId><artifactId>*</artifactId></exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.13.2</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Desktop build of the same ONNX Runtime version the app ships. -->
+    <dependency>
+      <groupId>com.microsoft.onnxruntime</groupId>
+      <artifactId>onnxruntime</artifactId>
+      <version>1.20.0</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Android API stubs; Robolectric's sandbox loads the real framework (android-all) at runtime. -->
+    <dependency>
+      <groupId>com.google.android</groupId>
+      <artifactId>android-stubs</artifactId>
+      <version>23</version>
+      <scope>system</scope>
+      <systemPath>${android.jar}</systemPath>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <id>app-sources</id>
+            <phase>generate-test-sources</phase>
+            <goals><goal>add-test-source</goal></goals>
+            <configuration>
+              <sources>
+                <source>../src</source>
+                <source>../build/gen</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+        <configuration>
+          <argLine>--add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED</argLine>
+          <redirectTestOutputToFile>false</redirectTestOutputToFile>
+          <trimStackTrace>false</trimStackTrace>
+          <systemPropertyVariables>
+            <outDir>${project.basedir}/../store/screenshots</outDir>
+            <samplesDir>${samplesDir}</samplesDir>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

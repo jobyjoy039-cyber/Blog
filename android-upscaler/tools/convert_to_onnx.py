@@ -27,8 +27,11 @@ def load_pth(path):
     return U(z.open(f'{root}/data.pkl')).load()
 
 class Graph:
-    def __init__(self, sd):
+    def __init__(self, sd, fp16_weights=False):
+        # fp16_weights halves the file size: weights are stored as float16 and Cast back to
+        # float32 when the model loads (ONNX Runtime folds the Casts), so inference stays fp32.
         self.sd, self.nodes, self.inits, self.n = sd, [], [], 0
+        self.fp16 = fp16_weights
 
     def tmp(self):
         self.n += 1
@@ -44,9 +47,16 @@ class Graph:
         self.nodes.append(helper.make_node(typ, inputs, [out], **attrs))
         return out
 
+    def weight(self, arr):
+        if not self.fp16:
+            return self.const(arr)
+        name = self.tmp()
+        self.inits.append(numpy_helper.from_array(np.asarray(arr, np.float16), name))
+        return self.op('Cast', [name], to=TensorProto.FLOAT)
+
     def conv(self, x, key):
         w, b = self.sd[key + '.weight'], self.sd[key + '.bias']
-        return self.op('Conv', [x, self.const(w), self.const(b)], pads=[1, 1, 1, 1], kernel_shape=[3, 3])
+        return self.op('Conv', [x, self.weight(w), self.const(b)], pads=[1, 1, 1, 1], kernel_shape=[3, 3])
 
     def upsample_nearest(self, x, s):
         return self.op('Resize', [x, '', self.const([1, 1, s, s])], mode='nearest',
@@ -85,9 +95,9 @@ def build_srvgg(pth, out, num_conv):
     g.save('output', out)
 
 
-def build_rrdb(pth, out, num_block=23):
+def build_rrdb(pth, out, num_block=23, fp16_weights=True):
     """RRDBNet (basicsr/archs/rrdbnet_arch.py), scale 4, as used by RealESRGAN_x4plus."""
-    g = Graph(weights(pth))
+    g = Graph(weights(pth), fp16_weights)
     lrelu = lambda t: g.op('LeakyRelu', [t], alpha=0.2)
     point2 = g.const(0.2)
 

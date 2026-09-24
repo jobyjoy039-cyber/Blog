@@ -1,0 +1,18 @@
+{
+  "compression": {
+    "uncompressedGlob": ["assets/*.onnx"]
+  },
+  "optimizations": {
+    "uncompressNativeLibraries": {
+      "enabled": true,
+      "alignment": "PAGE_ALIGNMENT_16K"
+    },
+    "splitsConfig": {
+      "splitDimension": [
+        {"value": "ABI"},
+        {"value": "SCREEN_DENSITY"},
+        {"value": "LANGUAGE", "negate": true}
+      ]
+    }
+  }
+}
