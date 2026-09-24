@@ -36,7 +36,16 @@ fi
 # 3. Resources + assets (models stored uncompressed).
 rm -rf "$B/gen" "$B/obj" "$B/apk"
 mkdir -p "$B/gen" "$B/obj" "$B/apk/lib"
-aapt package -f -0 onnx -M AndroidManifest.xml -S res -A assets -I "$ANDROID_JAR" -J "$B/gen" -F "$B/apk/base.apk"
+# LITE=1 leaves out the large RealESRGAN_x4plus model (the app then disables that option).
+ASSETS=assets
+OUT=RealESRGAN-Upscaler.apk
+if [ "${LITE:-0}" = 1 ]; then
+  ASSETS=$B/assets-lite
+  rm -rf "$ASSETS" && mkdir -p "$ASSETS"
+  cp assets/realesr-*.onnx "$ASSETS/"
+  OUT=RealESRGAN-Upscaler-lite.apk
+fi
+aapt package -f -0 onnx -M AndroidManifest.xml -S res -A "$ASSETS" -I "$ANDROID_JAR" -J "$B/gen" -F "$B/apk/base.apk"
 
 # 4. Java -> dex.
 javac -nowarn -source 8 -target 8 -encoding UTF-8 -bootclasspath "$ANDROID_JAR" -cp "$ORT/ort.jar" \
@@ -58,6 +67,6 @@ if [ ! -f "$KS" ]; then
     -storepass android -keypass android -dname "CN=Real-ESRGAN Upscaler"
 fi
 apksigner sign --ks "$KS" --ks-pass pass:android --ks-key-alias upscaler --key-pass pass:android \
-  --out RealESRGAN-Upscaler.apk "$B/apk/aligned.apk"
-apksigner verify RealESRGAN-Upscaler.apk
-ls -la RealESRGAN-Upscaler.apk
+  --out "$OUT" "$B/apk/aligned.apk"
+apksigner verify "$OUT"
+ls -la "$OUT"

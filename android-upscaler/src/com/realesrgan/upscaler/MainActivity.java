@@ -217,6 +217,11 @@ public class MainActivity extends Activity {
         RadioButton m2 = new RadioButton(this);
         m2.setText("High quality photo (RealESRGAN_x4plus, 10-20x slower)");
         m2.setId(View.generateViewId());
+        if (!hasAsset(MODEL_FILES[2])) {
+            m2.setText("High quality photo (not included in the lite build)");
+            m2.setEnabled(false);
+            m2.setTag("missing");
+        }
         modelGroup.addView(m0);
         modelGroup.addView(m1);
         modelGroup.addView(m2);
@@ -313,7 +318,10 @@ public class MainActivity extends Activity {
         runBtn.setEnabled(!running && input != null);
         cancelBtn.setEnabled(running);
         modelGroup.setEnabled(!running);
-        for (int i = 0; i < modelGroup.getChildCount(); i++) modelGroup.getChildAt(i).setEnabled(!running);
+        for (int i = 0; i < modelGroup.getChildCount(); i++) {
+            View c = modelGroup.getChildAt(i);
+            c.setEnabled(!running && c.getTag() == null);
+        }
         for (int i = 0; i < scaleGroup.getChildCount(); i++) scaleGroup.getChildAt(i).setEnabled(!running);
         saveBtn.setEnabled(!running && result != null);
         shareBtn.setEnabled(!running && result != null);
@@ -711,6 +719,15 @@ public class MainActivity extends Activity {
         cropBefore.setImageBitmap(before);
         cropAfter.setImageBitmap(after);
         cropRow.setVisibility(View.VISIBLE);
+    }
+
+    private boolean hasAsset(String name) {
+        try {
+            getAssets().open(name).close();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private byte[] readAsset(String name) throws Exception {

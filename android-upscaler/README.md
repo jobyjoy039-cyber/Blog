@@ -3,7 +3,12 @@
 An Android app that upscales images 4x (or 2x) with [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN).
 Everything runs on the phone (ONNX Runtime, CPU). No internet connection or account is needed.
 
-**Install:** copy `RealESRGAN-Upscaler.apk` to your phone, open it, and allow "install unknown apps" when asked.
+There are two builds:
+* `RealESRGAN-Upscaler.apk` (87 MB): all three models.
+* `RealESRGAN-Upscaler-lite.apk` (20 MB): leaves out the high-quality `RealESRGAN_x4plus` model.
+  Build it with `LITE=1 ./build.sh`.
+
+**Install:** copy either APK to your phone, open it, and allow "install unknown apps" when asked.
 Needs Android 7.0+ on an ARM phone (almost all phones are ARM).
 
 ## Using it
