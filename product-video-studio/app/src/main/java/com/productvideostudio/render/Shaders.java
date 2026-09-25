@@ -168,7 +168,8 @@ final class Shaders {
             "    float e = ease(p) * 1.2 - 0.1;\n" +
             "    float m = smoothstep(e - 0.03, e + 0.03, pos);\n" +
             "    c = mix(sB(uv), sA(uv), m);\n" +
-            "    c.rgb += exp(-pow((pos - e) / 0.02, 2.0)) * 0.35;\n" +
+            "    float edge = (pos - e) / 0.02;\n" +
+            "    c.rgb += exp(-edge * edge) * 0.35;\n" +
             "  } else if (uType == 9) {\n" +       // MORPH (luminance displacement)
             "    vec4 a0 = sA(uv); vec4 b0 = sB(uv);\n" +
             "    float la = dot(a0.rgb, vec3(0.33)); float lb = dot(b0.rgb, vec3(0.33));\n" +
