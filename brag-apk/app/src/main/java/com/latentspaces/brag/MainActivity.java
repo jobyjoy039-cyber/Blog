@@ -28,17 +28,15 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        final WebViewAssetLoader.AssetsPathHandler assets = new WebViewAssetLoader.AssetsPathHandler(this);
         final WebViewAssetLoader assetLoader = new WebViewAssetLoader.Builder()
                 .setDomain(HOST)
-                .addPathHandler("/site/", new WebViewAssetLoader.AssetsPathHandler(this) {
-                    @Override
-                    public WebResourceResponse handle(String path) {
-                        // Directory links like "examples/horse-tinder/" need their index.html.
-                        if (path.isEmpty() || path.endsWith("/")) {
-                            path += "index.html";
-                        }
-                        return super.handle("site/" + path);
+                .addPathHandler("/site/", path -> {
+                    // Directory links like "examples/horse-tinder/" need their index.html.
+                    if (path.isEmpty() || path.endsWith("/")) {
+                        path += "index.html";
                     }
+                    return assets.handle("site/" + path);
                 })
                 .build();
 
