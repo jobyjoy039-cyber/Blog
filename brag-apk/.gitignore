@@ -1,0 +1,5 @@
+.gradle/
+build/
+local.properties
+# Filled from latent-spaces/brag's docs/ at build time (see the workflow).
+app/src/main/assets/site/

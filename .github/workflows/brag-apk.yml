@@ -1,0 +1,57 @@
+name: Build /brag APK
+
+on:
+  push:
+    paths:
+      - "brag-apk/**"
+      - ".github/workflows/brag-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the /brag launch site
+        run: |
+          git clone --depth 1 https://github.com/latent-spaces/brag.git "$RUNNER_TEMP/brag"
+          mkdir -p brag-apk/app/src/main/assets/site
+          cp -R "$RUNNER_TEMP/brag/docs/." brag-apk/app/src/main/assets/site/
+          rm -f brag-apk/app/src/main/assets/site/*.md brag-apk/app/src/main/assets/site/.gitignore
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+
+      - name: Build APK
+        working-directory: brag-apk
+        run: gradle --no-daemon assembleRelease
+
+      - name: Rename APK
+        run: cp brag-apk/app/build/outputs/apk/release/app-release.apk brag.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: brag-apk
+          path: brag.apk
+
+      - name: Publish to the brag-apk-latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: brag-apk-latest
+          name: /brag APK (latest build)
+          body: Android app of the /brag launch site, built from ${{ github.sha }}.
+          files: brag.apk
+          prerelease: true
+          make_latest: false
