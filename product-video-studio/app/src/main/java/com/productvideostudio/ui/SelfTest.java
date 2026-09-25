@@ -84,8 +84,8 @@ final class SelfTest {
             }
             if (st.status != RenderState.Status.DONE) throw new IllegalStateException("render ended as " + st.status + ": " + st.error);
             Project finished = store.load(p.id);
-            Files.copy(new File(finished.outputPath).toPath(), new File(outDir, "selftest.mp4").toPath(),
-                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            // Written as a new file (not Files.copy, which keeps app-private permissions) so adb can pull it.
+            Files.write(new File(outDir, "selftest.mp4").toPath(), Files.readAllBytes(new File(finished.outputPath).toPath()));
             Files.write(done.toPath(), ("gallery=" + finished.outputUri + "\n").getBytes("UTF-8"));
             Log.i(TAG, "self-test passed");
         } catch (Throwable t) {
