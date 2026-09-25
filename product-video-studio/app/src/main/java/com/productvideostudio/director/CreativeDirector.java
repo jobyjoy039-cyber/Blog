@@ -589,10 +589,10 @@ public final class CreativeDirector {
         switch (sc.type) {
             case HERO_REVEAL: {
                 float reveal = beat * MusicGenerator.INTRO_BEATS;
-                TextItem name = text(TextRole.PRODUCT_NAME, headline(copy.headline), headlineAnim, reveal, 0.5f, 0.8f, 104, textColor);
+                TextItem name = text(TextRole.PRODUCT_NAME, headline(copy.headline), headlineAnim, reveal, 0.5f, 0.775f, 96, textColor);
                 name.bold = board.fontBold;
                 out.add(name);
-                out.add(text(TextRole.TAGLINE, copy.tagline, TextAnim.FADE, reveal + 0.45f, 0.5f, 0.865f, 46, withAlpha(textColor, 0.85f)));
+                out.add(text(TextRole.TAGLINE, copy.tagline, TextAnim.FADE, reveal + 0.45f, 0.5f, 0.885f, 44, withAlpha(textColor, 0.85f)));
                 if (!copy.brand.isEmpty() && !copy.headline.toLowerCase(Locale.ROOT).contains(copy.brand.toLowerCase(Locale.ROOT))) {
                     out.add(text(TextRole.BRAND, copy.brand.toUpperCase(Locale.ROOT), TextAnim.FADE, reveal * 0.6f, 0.5f, 0.1f, 36, withAlpha(textColor, 0.8f)));
                 }
@@ -632,8 +632,8 @@ public final class CreativeDirector {
                 break;
             }
             case CALL_TO_ACTION: {
-                out.add(text(TextRole.PRODUCT_NAME, headline(copy.headline), headlineAnim, 0.2f, 0.5f, 0.64f, 88, textColor));
-                float y = 0.715f;
+                out.add(text(TextRole.PRODUCT_NAME, headline(copy.headline), headlineAnim, 0.2f, 0.5f, 0.635f, 80, textColor));
+                float y = 0.73f;
                 if (!copy.price.isEmpty()) {
                     out.add(text(TextRole.PRICE, copy.price, TextAnim.SCALE, 0.5f, 0.5f, y, 64, textColor));
                     y += 0.07f;

@@ -19,7 +19,8 @@ public final class Segmenter {
     /**
      * Returns a mask (255 = product, 0 = background) of the same size as {@code px}.
      * Background is everything connected to the border whose color is within {@code threshold}
-     * of {@code bg}, plus large enclosed pockets of the same color (e.g. the hole in a mug handle).
+     * of {@code bg}. Enclosed areas are always kept: a white label inside a product looks exactly
+     * like a hole, and losing the label is far worse than keeping a hole filled.
      */
     public static byte[] productMask(int[] px, int w, int h, int bg, float threshold) {
         int n = w * h;
@@ -50,32 +51,6 @@ public final class Segmenter {
             if (y < h - 1) sp = push(stack, sp, seen, bgLike, i + w);
         }
 
-        // Enclosed pockets that closely match the background and are big enough to be real gaps.
-        float tight = threshold * 0.7f;
-        int minPocket = Math.max(16, n / 250);
-        int[] component = new int[n];
-        for (int start = 0; start < n; start++) {
-            if (seen[start] || !bgLike[start] || colorDistance(px[start], bg) >= tight) continue;
-            int count = 0;
-            sp = 0;
-            stack[sp++] = start;
-            seen[start] = true;
-            while (sp > 0) {
-                int i = stack[--sp];
-                component[count++] = i;
-                int x = i % w, y = i / w;
-                int[] nb = {x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1};
-                for (int j : nb) {
-                    if (j >= 0 && !seen[j] && bgLike[j] && colorDistance(px[j], bg) < tight) {
-                        seen[j] = true;
-                        stack[sp++] = j;
-                    }
-                }
-            }
-            if (count >= minPocket) {
-                for (int k = 0; k < count; k++) mask[component[k]] = 0;
-            }
-        }
         return mask;
     }
 
@@ -85,6 +60,27 @@ public final class Segmenter {
             stack[sp++] = i;
         }
         return sp;
+    }
+
+    /**
+     * How solidly the mask fills its own bounding box. Low values mean the fill leaked into a
+     * product whose color is close to the background, leaving only fragments.
+     */
+    public static float solidity(byte[] mask, int w, int h) {
+        int minX = w, minY = h, maxX = -1, maxY = -1, count = 0;
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                if ((mask[y * w + x] & 0xFF) > 128) {
+                    count++;
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        }
+        if (count == 0) return 0f;
+        return count / (float) ((maxX - minX + 1) * (maxY - minY + 1));
     }
 
     /** Fraction of pixels marked as product. */

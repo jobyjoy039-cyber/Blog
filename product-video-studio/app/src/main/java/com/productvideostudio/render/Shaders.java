@@ -181,7 +181,7 @@ final class Shaders {
             "    float s = sin(3.14159 * p);\n" +
             "    vec2 c1 = vec2(0.15 + 0.7 * p, 0.8 - 0.3 * p); vec2 c2 = vec2(0.9 - 0.5 * p, 0.2 + 0.4 * p);\n" +
             "    float g = exp(-dot(uv - c1, uv - c1) / 0.09) + 0.7 * exp(-dot(uv - c2, uv - c2) / 0.06);\n" +
-            "    c.rgb += uLeak * g * s * 1.1 + vec3(0.12, 0.05, 0.0) * s;\n" +
+            "    c.rgb += uLeak * g * s * 0.7 + vec3(0.07, 0.03, 0.0) * s;\n" +
             "  } else if (uType == 11) {\n" +      // FILM BURN
             "    float n = fbm(uv * vec2(3.0, 5.0) + vec2(uTime * 0.7, uTime * 0.3));\n" +
             "    float s = sin(3.14159 * p);\n" +

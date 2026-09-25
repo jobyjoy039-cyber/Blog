@@ -95,6 +95,11 @@ final class SceneAssets {
             Log.i(TAG, "cutout rejected, coverage " + cov);
             return null;
         }
+        float solid = Segmenter.solidity(mask, mw, mh);
+        if (solid < 0.4f) {
+            Log.i(TAG, "cutout rejected, solidity " + solid);
+            return null;
+        }
         mask = Segmenter.refine(mask, mw, mh);
 
         int bottom = mh - 1;
