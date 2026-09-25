@@ -1,0 +1,99 @@
+name: Product Video Studio APK
+
+on:
+  push:
+    paths:
+      - "product-video-studio/**"
+      - ".github/workflows/product-video-studio.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+
+      - name: Build APK
+        working-directory: product-video-studio
+        run: gradle --no-daemon assembleRelease
+
+      - name: Collect APK
+        run: |
+          mkdir -p dist
+          cp product-video-studio/app/build/outputs/apk/release/app-release.apk dist/ProductVideoStudio.apk
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: product-video-studio-apk
+          path: dist/ProductVideoStudio.apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Render a sample video on an emulator
+        id: selftest
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          ram-size: 4096M
+          disk-size: 4G
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash product-video-studio/ci/selftest.sh dist/ProductVideoStudio.apk selftest
+
+      - name: Inspect the rendered video
+        if: always()
+        run: |
+          sudo apt-get install -y -qq ffmpeg > /dev/null
+          ls -la selftest || true
+          if [ -f selftest/selftest.mp4 ]; then
+            ffprobe -v error -show_entries stream=codec_name,profile,width,height,r_frame_rate,bit_rate,sample_rate,channels:format=duration,size -of default=nw=1 selftest/selftest.mp4 | tee selftest/probe.txt
+            mkdir -p selftest/frames
+            for t in 0.3 1.0 1.6 2.4 3.2 4.0 4.8 5.6 6.4 7.2 8.0 8.8 9.6 10.4 11.2 11.8; do
+              ffmpeg -v error -ss $t -i selftest/selftest.mp4 -frames:v 1 -vf scale=360:640 selftest/frames/f_$t.jpg
+            done
+            ffmpeg -v error -pattern_type glob -i 'selftest/frames/f_*.jpg' -vf tile=8x2 -frames:v 1 selftest/contact.jpg || true
+            ffmpeg -v error -i selftest/selftest.mp4 -af volumedetect -f null - 2>&1 | grep -E "mean_volume|max_volume" | tee -a selftest/probe.txt || true
+          fi
+          (cd selftest && zip -qr ../dist/selftest-results.zip .) || true
+
+      - name: Publish to the product-video-studio-latest release
+        if: always()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: product-video-studio-latest
+          name: Product Video Studio (latest build)
+          body: |
+            Android APK for Product Video Studio, built from ${{ github.sha }}.
+            selftest-results.zip holds a sample video rendered on an emulator by the app itself.
+          files: |
+            dist/ProductVideoStudio.apk
+            dist/selftest-results.zip
+          prerelease: true
+          make_latest: false
+
+      - name: Fail if the self-test failed
+        if: steps.selftest.outcome != 'success'
+        run: |
+          cat selftest/selftest.error 2>/dev/null || true
+          tail -n 80 selftest/logcat.txt 2>/dev/null || true
+          exit 1
