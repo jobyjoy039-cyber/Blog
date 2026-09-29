@@ -1,0 +1,3 @@
+[submodule "shrimply"]
+	path = shrimply
+	url = https://github.com/soirihiroka/shrimply.git
