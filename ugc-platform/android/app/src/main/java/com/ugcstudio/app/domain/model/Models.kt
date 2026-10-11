@@ -26,6 +26,12 @@ enum class AdFramework(val wire: String, val label: String, val blurb: String) {
 /** KittenTTS voices built into the server. */
 val KITTEN_VOICES = listOf("Jasper", "Bella", "Luna", "Bruno", "Rosie", "Hugo", "Kiki", "Leo")
 
+/** Original music beds composed on the server; NONE renders voice + SFX only. */
+enum class MusicStyle(val wire: String, val label: String) {
+    UPBEAT("upbeat", "Upbeat"), ENERGETIC("energetic", "Energetic"), CHILL("chill", "Chill"),
+    LUXURY("luxury", "Luxury"), NONE("none", "No music"),
+}
+
 enum class Resolution(val wire: String) { P720("720p"), P1080("1080p"), K4("4k") }
 
 /** What the user asks for. Exactly one of [url] or [manual] is set. */
@@ -39,6 +45,7 @@ data class CreateAdParams(
     val language: String = "en",
     /** Voice name; null lets the server use its default. */
     val voice: String? = null,
+    val music: MusicStyle = MusicStyle.UPBEAT,
 )
 
 data class ManualProduct(

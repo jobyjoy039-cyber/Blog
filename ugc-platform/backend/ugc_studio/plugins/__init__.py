@@ -3,6 +3,8 @@ from .base import Capability, Registry
 from .brain_claude import ClaudeAnalyzer, ClaudeScriptWriter
 from .brain_local import LocalAnalyzer, TemplateScriptWriter
 from .ingest import ManualIngest, WebIngest
+from .music import ProceduralMusic
+from .render_studio import StudioRenderer
 from .render_ffmpeg import FFmpegRenderer
 from .voice import ProportionalAligner, SilentVoice, VoiceStudioVoice
 from .voice_kitten import KittenVoice
@@ -23,6 +25,8 @@ def build_registry(settings: Settings) -> Registry:
         VoiceStudioVoice(settings.voicestudio_url, settings.voicestudio_engine, settings.voice_speed),
         SilentVoice(),
         ProportionalAligner(),
+        ProceduralMusic(),
+        StudioRenderer(settings.font),
         FFmpegRenderer(settings.font),
     ):
         reg.register(plugin)

@@ -22,6 +22,7 @@ class Capability(str, Enum):
     script = "script"
     voice = "voice"
     align = "align"
+    music = "music"
     render = "render"
 
 
@@ -89,6 +90,14 @@ class AlignPlugin(Plugin):
 
     @abstractmethod
     def align(self, text: str, audio_path: Path, duration: float) -> list[Word]: ...
+
+
+class MusicPlugin(Plugin):
+    capability = Capability.music
+
+    @abstractmethod
+    def compose(self, style: str, duration: float, out_path: Path, seed: int) -> Path:
+        """Write a music bed exactly `duration` seconds long."""
 
 
 class RenderPlugin(Plugin):

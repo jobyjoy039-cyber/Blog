@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import zlib
 import json
 import logging
 import time
@@ -15,10 +16,11 @@ from typing import Callable, TypeVar
 
 from pydantic import BaseModel
 
+from . import timeline
 from .domain import (
     Analysis, Job, ProductInfo, RenderInput, RenderOutput, SceneAudio, Script, StepTrace,
 )
-from .plugins.base import Capability, IngestPlugin, Plugin, Registry
+from .plugins.base import Capability, IngestPlugin, NoPluginAvailable, Plugin, Registry
 from .plugins.brain_local import DROPPABLE
 from .plugins.render_ffmpeg import END_HOLD, SCENE_PAD
 
@@ -162,6 +164,16 @@ class Orchestrator:
         music = None
         if req.music_upload_id:
             music = str(self.data_dir / "uploads" / req.music_upload_id)
+        elif req.music != "none":
+            total = timeline.plan([a.duration for a in scene_audio]).total
+            seed = zlib.crc32(job.id.encode()) % 10_000
+            try:  # music is polish: an ad without it beats no ad
+                music = str(self._run_chain(
+                    job, "music", Capability.music,
+                    lambda p: p.compose(req.music, total, workdir / "music.wav", seed),  # type: ignore[attr-defined]
+                ))
+            except (StepFailed, NoPluginAvailable) as e:
+                log.warning("Continuing without music: %s", e)
         w, h = req.frame()
         data = RenderInput(product=job.product, script=job.script, scene_audio=scene_audio,
                            width=w, height=h, music_path=music)

@@ -13,7 +13,8 @@ Paste or share a product link on Android and get back a platform-ready UGC-style
      ├── script   claude · framework templates (PAS, AIDA, BAB, …)
      ├── voice    KittenTTS built in (CPU) · VoiceStudio server (cloning, more engines) · silent
      ├── align    proportional (WhisperX planned)
-     └── render   FFmpeg (Ken Burns, crossfades, ASS captions, ducking, −14 LUFS)
+     ├── music    procedural composer (original, royalty-free beds)
+     └── render   studio motion-graphics engine · FFmpeg (fallback)
 ```
 
 **Every open-source project is one plugin behind one interface.** The orchestrator never imports a model directly: it asks the registry for a capability's chain, tries the preferred plugin with retries, and falls back to the next one if it fails. Swapping a model at runtime is a single API call (`PUT /plugins/voice {"name": "…"}`), which the app's Settings screen exposes.
@@ -29,7 +30,9 @@ Verified in this repository (see *Testing*):
 | Analysis | Audience, pain points (taken from real review text), USPs, objections, hooks, **proof points copied only from the data**, and risky-claim warnings. |
 | Script | 8 frameworks: PAS, AIDA, BAB, Problem→Solution, Unboxing, Founder, Educational, Comparison. Scenes get a voice line, an on-screen headline and a product image. |
 | Voice | **KittenTTS runs built in**: CPU only, 8 English voices (Bella, Jasper, Luna, Bruno, Rosie, Hugo, Kiki, Leo), Apache-2.0. It runs in an isolated worker process that restarts itself if it crashes. VoiceStudio is an optional second engine for voice cloning and other languages. Each scene is voiced separately, so visuals cut exactly on line boundaries. Edge silence is trimmed. If the real audio overruns the target length, supporting scenes are dropped and the hook, solution, proof and CTA always stay. |
-| Render | The product shot sits over a blurred fill of itself (any image fits any aspect), with a Ken Burns push, 0.3s crossfades, word-highlighted captions above the platform UI area, scene headlines, an "Ad" disclosure label, optional music ducked under the voice, and loudness normalised to −14 LUFS. Output is H.264/AAC MP4 with faststart, plus a thumbnail. |
+| Studio render | **Default.** A frame-by-frame motion-graphics engine (Pillow for design, OpenCV for sub-pixel motion, about 16 ms per 1080p frame). The brand colour is sampled from the product photos. The background is a colour-graded, vignetted blur of the photo, moving slower than the product card for parallax. The product card has rounded corners and a soft shadow, a gentle float, and a different eased camera move each scene. The hook opens on a punch-in. Transitions alternate slide-up, zoom-through and slide-left. There's a progress bar, brand-coloured headline boxes, word-pop captions, an "Ad" label and an animated "Shop now · price" button. |
+| Studio audio | KittenTTS voice through a broadcast chain (rumble and mud cut, presence lift, harmonic exciter to restore "air", de-esser, compression). An original music bed is composed per ad (upbeat, energetic, chill, luxury or none) with kick-driven pumping, ducked under the voice. Synthesized whooshes on transitions, pops on headlines and a chime on the CTA. Two-pass EBU R128 mastering to −14 LUFS / −1.5 dBTP. |
+| Fallback render | The product shot sits over a blurred fill of itself (any image fits any aspect), with a Ken Burns push, 0.3s crossfades, word-highlighted captions above the platform UI area, scene headlines, an "Ad" disclosure label, optional music ducked under the voice, and loudness normalised to −14 LUFS. Output is H.264/AAC MP4 with faststart, plus a thumbnail. |
 | Platforms | 9:16 (TikTok, Reels, Shorts, Snapchat) · 4:5 (Facebook) · 2:3 (Pinterest) · 16:9 (YouTube, Amazon) · 1:1 (Flipkart), each at 720p, 1080p or 4K. |
 | Android | Create (link or manual + photo picker), share-to-app from any browser or store app, live progress, in-app player, share/save, library, settings (server URL, API key encrypted with an Android Keystore key, AI module picker). |
 | Ops | Durable job queue that resumes after a restart, content-hash step cache (retries skip finished work), API-key auth, SSRF guard on product links (private/loopback/metadata addresses refused on every hop), upload type/size limits, path-traversal checks, Docker image, docker-compose with VoiceStudio, GitHub Actions CI. |
@@ -114,8 +117,8 @@ Status: ✅ built and tested · 🟡 partial · ⬜ not started. Candidate proje
 | Subtitles | ✅ | Word-highlight ASS captions. ⬜ WhisperX (BSD-2) aligner plugin for exact timing; caption style presets; emoji |
 | Video generator | 🟡 | Ken Burns + crossfades. ⬜ Image-to-video service plugin: Wan 2.x (Apache-2.0); check LTX-Video and HunyuanVideo licences |
 | Avatar / talking head | ⬜ | Separate GPU service. MuseTalk (MIT), EchoMimic (Apache-2.0). ⚠️ Wav2Lip and InsightFace-based models are non-commercial |
-| Audio studio | 🟡 | Ducking + −14 LUFS. ⬜ Denoise/EQ chain (FFmpeg `afftdn`, `equalizer`); ⚠️ MusicGen weights are non-commercial, so use licensed stock music |
-| Motion graphics | 🟡 | Headlines, captions, "Ad" label. ⬜ Remotion templates (⚠️ Remotion needs a paid company licence above 3 employees) or MoviePy (MIT) |
+| Audio studio | ✅ | Voice chain, composed music, SFX, ducking, two-pass −14 LUFS. ⬜ Denoise/EQ chain (FFmpeg `afftdn`, `equalizer`); ⚠️ MusicGen weights are non-commercial, so use licensed stock music |
+| Motion graphics | 🟡 | Studio engine: parallax, eased moves, transitions, progress bar, CTA button, themed captions. ⬜ Remotion templates (⚠️ Remotion needs a paid company licence above 3 employees) or MoviePy (MIT) |
 | Image tools | ⬜ | rembg (MIT) background removal, Real-ESRGAN (BSD-3) upscaling, LaMa (Apache-2.0) object removal |
 | AI designer (static creatives, infographics) | ⬜ | Pillow/HTML templates rendered with Playwright, sized per platform |
 | AI editor / viral optimisation | ⬜ | Rules first (hook ≤2s, product on screen by 3s, scene length); retention prediction needs real performance data |
@@ -124,10 +127,14 @@ Status: ✅ built and tested · 🟡 partial · ⬜ not started. Candidate proje
 | Agents + master orchestrator | ✅ | Each "agent" in the spec is a capability step. The orchestrator handles selection, fallback, retries, caching and the queue. ⬜ Distributed workers (move the queue to Redis/Celery when one box isn't enough) |
 | Production (DI, MVVM, tests, CI, Docker, encrypted keys) | ✅ | ⬜ Crash reporting / analytics (opt-in), Compose UI tests, offline drafts on the phone |
 
+## Video tools
+
+`tools/` has two standalone renderers that reuse the studio audio and graphics code: a cinematic **motion poster** from a single still, and a 90-second **scrap-to-showroom restoration video** that builds its first scenes from a photo and assembles AI-generated clips for the rest. See `tools/README.md`.
+
 ## Testing
 
 ```bash
-cd backend && .venv/bin/pytest -q                  # 30 tests: ingest, brain, registry, orchestrator, real FFmpeg render, KittenTTS (incl. crash recovery), API
+cd backend && .venv/bin/pytest -q                  # 32 tests: ingest, brain, registry, orchestrator, real FFmpeg render, KittenTTS (incl. crash recovery), studio render + mastering, API
 cd android && ./gradlew testDebugUnitTest          # 11 tests: use cases, polling, repository against real server JSON
 ```
 

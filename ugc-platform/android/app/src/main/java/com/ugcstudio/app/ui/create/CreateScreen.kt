@@ -60,6 +60,7 @@ import coil.compose.AsyncImage
 import com.ugcstudio.app.domain.model.AdFramework
 import com.ugcstudio.app.domain.model.AdPlatform
 import com.ugcstudio.app.domain.model.KITTEN_VOICES
+import com.ugcstudio.app.domain.model.MusicStyle
 import com.ugcstudio.app.domain.model.Resolution
 
 @Composable
@@ -168,6 +169,12 @@ fun CreateContent(
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     KITTEN_VOICES.forEach { v ->
                         FilterChip(selected = state.voice == v, onClick = { update { copy(voice = v) } }, label = { Text(v) })
+                    }
+                }
+                Text("Music", style = MaterialTheme.typography.titleSmall)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MusicStyle.entries.forEach { m ->
+                        FilterChip(selected = state.music == m, onClick = { update { copy(music = m) } }, label = { Text(m.label) })
                     }
                 }
                 Text("Resolution", style = MaterialTheme.typography.titleSmall)

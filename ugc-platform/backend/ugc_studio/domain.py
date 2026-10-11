@@ -33,6 +33,8 @@ PLATFORM_FRAME: dict[Platform, tuple[int, int]] = {
 
 RESOLUTION_SCALE = {"720p": 2 / 3, "1080p": 1.0, "4k": 2.0}
 
+MUSIC_STYLES = ("upbeat", "energetic", "chill", "luxury", "none")
+
 
 class Framework(str, Enum):
     pas = "PAS"
@@ -66,13 +68,16 @@ class JobRequest(BaseModel):
     target_seconds: int = Field(30, ge=8, le=90)
     language: str = "en"
     voice: str | None = Field(None, description="Engine-specific voice/profile id")
-    music_upload_id: str | None = None
+    music: str = Field("upbeat", description="upbeat | energetic | chill | luxury | none")
+    music_upload_id: str | None = Field(None, description="Your own track; overrides `music`")
     script_override: Script | None = Field(None, description="Skip script generation and render this script")
 
     @model_validator(mode="after")
     def _needs_source(self) -> "JobRequest":
         if not self.url and not self.brief:
             raise ValueError("Provide a product url or a manual brief")
+        if self.music not in MUSIC_STYLES:
+            raise ValueError(f"music must be one of {MUSIC_STYLES}")
         if self.resolution not in RESOLUTION_SCALE:
             raise ValueError(f"resolution must be one of {sorted(RESOLUTION_SCALE)}")
         return self

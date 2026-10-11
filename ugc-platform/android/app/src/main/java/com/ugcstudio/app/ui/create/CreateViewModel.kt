@@ -6,6 +6,7 @@ import com.ugcstudio.app.domain.model.AdFramework
 import com.ugcstudio.app.domain.model.AdPlatform
 import com.ugcstudio.app.domain.model.CreateAdParams
 import com.ugcstudio.app.domain.model.ManualProduct
+import com.ugcstudio.app.domain.model.MusicStyle
 import com.ugcstudio.app.domain.model.Resolution
 import com.ugcstudio.app.domain.usecase.CreateAdUseCase
 import com.ugcstudio.app.domain.usecase.InvalidAdRequest
@@ -33,6 +34,7 @@ data class CreateState(
     val resolution: Resolution = Resolution.P1080,
     val seconds: Int = 30,
     val voice: String = "Jasper",
+    val music: MusicStyle = MusicStyle.UPBEAT,
     val submitting: Boolean = false,
     val error: String? = null,
 )
@@ -71,6 +73,7 @@ class CreateViewModel @Inject constructor(private val createAd: CreateAdUseCase)
             resolution = s.resolution,
             targetSeconds = s.seconds,
             voice = s.voice,
+            music = s.music,
         )
         _state.update { it.copy(submitting = true, error = null) }
         viewModelScope.launch {

@@ -17,6 +17,7 @@ fun CreateAdParams.toDto(uploadIds: List<String>) = JobRequestDto(
     targetSeconds = targetSeconds,
     language = language,
     voice = voice,
+    music = music.wire,
 )
 
 fun JobDto.toDomain() = AdJob(

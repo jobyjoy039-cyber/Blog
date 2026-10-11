@@ -1,6 +1,4 @@
 import importlib.util
-import os
-from concurrent.futures.process import BrokenProcessPool
 
 import pytest
 
@@ -26,11 +24,26 @@ def test_speaks_with_chosen_voice(kitten, tmp_path, brief_request):
 
 
 def test_recovers_after_worker_crash(kitten, tmp_path, brief_request):
-    kitten._executor().submit(os._exit, 1)  # kill the worker the way a native espeak abort would
-    with pytest.raises((RuntimeError, BrokenProcessPool)):
-        for _ in range(3):  # the pool notices the dead worker on the next submit
-            kitten.synthesize("Still there?", tmp_path / "b.wav", brief_request)
+    kitten.synthesize("Warm up.", tmp_path / "w.wav", brief_request)
+    kitten._proc.kill()  # the way a native espeak abort would end it
+    kitten._proc.wait()
+    # the dead worker is noticed and replaced on the next request
     assert kitten.synthesize("Back again.", tmp_path / "c.wav", brief_request) > 0.3
+
+
+def test_worker_dying_mid_request_is_reported(kitten, tmp_path, brief_request, monkeypatch):
+    kitten.synthesize("Warm up.", tmp_path / "w.wav", brief_request)
+    real_write = kitten._proc.stdin.write
+
+    def write_then_die(data):
+        n = real_write(data)
+        kitten._proc.kill()
+        return n
+
+    monkeypatch.setattr(kitten._proc.stdin, "write", write_then_die)
+    with pytest.raises(RuntimeError, match="crashed"):
+        kitten.synthesize("Gone.", tmp_path / "x.wav", brief_request)
+    assert kitten.synthesize("Recovered.", tmp_path / "y.wav", brief_request) > 0.3
 
 
 def test_non_english_is_rejected_for_fallback(kitten, tmp_path, brief_request):
