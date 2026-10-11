@@ -1,0 +1,30 @@
+# Backend + VoiceStudio speech server.
+#   export UGC_API_KEY=$(openssl rand -hex 24)
+#   export OMNIVOICE_API_KEY=$(openssl rand -hex 24)
+#   docker compose up -d
+services:
+  api:
+    build: ./backend
+    ports: ["8080:8080"]
+    environment:
+      UGC_API_KEY: ${UGC_API_KEY:?set UGC_API_KEY}
+      UGC_VOICESTUDIO_URL: http://voicestudio:3900
+      UGC_VOICESTUDIO_ENGINE: kittentts
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes: ["ugc-data:/data"]
+    depends_on: [voicestudio]
+    restart: unless-stopped
+
+  voicestudio:
+    # AGPL-3.0, runs as a separate service. Install the KittenTTS model once from
+    # its web UI or: POST /models/install {"repo_id": "KittenML/kitten-tts-mini-0.8"}
+    image: ghcr.io/debpalash/voicestudio:stable
+    environment:
+      OMNIVOICE_API_KEY: ${OMNIVOICE_API_KEY:?set OMNIVOICE_API_KEY}
+      OMNIVOICE_ANALYTICS_DISABLED: "1"
+    volumes: ["voicestudio-data:/root/.omnivoice"]
+    restart: unless-stopped
+
+volumes:
+  ugc-data:
+  voicestudio-data:

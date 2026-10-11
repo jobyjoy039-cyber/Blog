@@ -1,0 +1,232 @@
+{
+ "id": "56457c2aa4114d0495ba4a2f2e59fecd",
+ "status": "succeeded",
+ "progress": 1.0,
+ "step": "render",
+ "request": {
+  "url": "http://localhost:8765/index.html",
+  "brief": null,
+  "platform": "shorts",
+  "framework": "BAB",
+  "resolution": "720p",
+  "target_seconds": 20,
+  "language": "en",
+  "voice": null,
+  "music_upload_id": null,
+  "script_override": null
+ },
+ "product": {
+  "title": "GripMount Magnetic Car Phone Mount",
+  "brand": "GripMount",
+  "description": "Snaps on in two seconds with N52 magnets.\nHolds phones up to 300 g through potholes and sharp turns.\nOne-hand release and 360 degree rotation.\nFits any vent in under a minute.",
+  "price": "28.00",
+  "currency": "USD",
+  "features": [
+   "Snaps on in two seconds with N52 magnets.",
+   "Holds phones up to 300 g through potholes and sharp turns.",
+   "One-hand release and 360 degree rotation.",
+   "Fits any vent in under a minute."
+  ],
+  "specs": {},
+  "rating": 4.6,
+  "review_count": 1843,
+  "reviews": [
+   "Love it, holds through every bump on my commute.",
+   "The old suction mount kept falling, this one is easy and solid."
+  ],
+  "images": [
+   "/data/jobs/56457c2aa4114d0495ba4a2f2e59fecd/img_0.jpg",
+   "/data/jobs/56457c2aa4114d0495ba4a2f2e59fecd/img_1.jpg",
+   "/data/jobs/56457c2aa4114d0495ba4a2f2e59fecd/img_2.jpg"
+  ],
+  "source_url": "http://localhost:8765/index.html",
+  "source": "web"
+ },
+ "analysis": {
+  "audience": "people shopping for gripmount magnetic car phone mount",
+  "pain_points": [
+   "the old suction mount kept falling"
+  ],
+  "desires": [
+   "Snaps on in two seconds with N52 magnets",
+   "Holds phones up to 300 g through potholes and sharp turns",
+   "One-hand release and 360 degree rotation"
+  ],
+  "usps": [
+   "Snaps on in two seconds with N52 magnets",
+   "Holds phones up to 300 g through potholes and sharp turns",
+   "One-hand release and 360 degree rotation"
+  ],
+  "objections": [
+   "Is it worth the price?",
+   "Will it actually work for me?"
+  ],
+  "emotional_triggers": [
+   "relief",
+   "confidence",
+   "saving time"
+  ],
+  "hooks": [
+   "Okay, I did not expect GripMount to be this good.",
+   "Stop scrolling if you need snaps on in two seconds with N52 magnets.",
+   "Here's what GripMount actually does."
+  ],
+  "proof_points": [
+   "4.6 stars from 1,843 reviews",
+   "Snaps on in two seconds with N52 magnets",
+   "Holds phones up to 300 g through potholes and sharp turns",
+   "One-hand release and 360 degree rotation"
+  ],
+  "claim_warnings": []
+ },
+ "script": {
+  "framework": "BAB",
+  "title": "GripMount: BAB ad",
+  "scenes": [
+   {
+    "kind": "before",
+    "voice": "Before: the old suction mount kept falling.",
+    "on_screen": "",
+    "image_index": 0
+   },
+   {
+    "kind": "after",
+    "voice": "After: snaps on in two seconds with N52 magnets.",
+    "on_screen": "GripMount",
+    "image_index": 1
+   },
+   {
+    "kind": "bridge",
+    "voice": "The bridge? GripMount.",
+    "on_screen": "",
+    "image_index": 2
+   },
+   {
+    "kind": "proof",
+    "voice": "4.6 stars from 1,843 reviews.",
+    "on_screen": "",
+    "image_index": 0
+   },
+   {
+    "kind": "cta",
+    "voice": "It's $28.00. Tap the link to get yours.",
+    "on_screen": "$28.00 \u00b7 Link below",
+    "image_index": 1
+   }
+  ],
+  "caption": "Okay, I did not expect GripMount to be this good. GripMount, link in bio.",
+  "hashtags": [
+   "#GripMount",
+   "#ad",
+   "#tiktokmademebuyit"
+  ]
+ },
+ "output": {
+  "video": "/data/jobs/56457c2aa4114d0495ba4a2f2e59fecd/render/ad.mp4",
+  "thumbnail": "/data/jobs/56457c2aa4114d0495ba4a2f2e59fecd/render/thumbnail.jpg",
+  "duration": 21.13
+ },
+ "trace": [
+  {
+   "step": "ingest",
+   "plugin": "web",
+   "cached": false,
+   "seconds": 0.06,
+   "fallbacks": []
+  },
+  {
+   "step": "analyze",
+   "plugin": "local",
+   "cached": false,
+   "seconds": 0.0,
+   "fallbacks": []
+  },
+  {
+   "step": "script",
+   "plugin": "templates",
+   "cached": false,
+   "seconds": 0.0,
+   "fallbacks": []
+  },
+  {
+   "step": "voice[0]",
+   "plugin": "voicestudio",
+   "cached": false,
+   "seconds": 3.85,
+   "fallbacks": []
+  },
+  {
+   "step": "align[0]",
+   "plugin": "proportional",
+   "cached": false,
+   "seconds": 0.0,
+   "fallbacks": []
+  },
+  {
+   "step": "voice[1]",
+   "plugin": "voicestudio",
+   "cached": false,
+   "seconds": 5.71,
+   "fallbacks": []
+  },
+  {
+   "step": "align[1]",
+   "plugin": "proportional",
+   "cached": false,
+   "seconds": 0.0,
+   "fallbacks": []
+  },
+  {
+   "step": "voice[2]",
+   "plugin": "voicestudio",
+   "cached": false,
+   "seconds": 3.33,
+   "fallbacks": []
+  },
+  {
+   "step": "align[2]",
+   "plugin": "proportional",
+   "cached": false,
+   "seconds": 0.0,
+   "fallbacks": []
+  },
+  {
+   "step": "voice[3]",
+   "plugin": "voicestudio",
+   "cached": false,
+   "seconds": 4.9,
+   "fallbacks": []
+  },
+  {
+   "step": "align[3]",
+   "plugin": "proportional",
+   "cached": false,
+   "seconds": 0.0,
+   "fallbacks": []
+  },
+  {
+   "step": "voice[4]",
+   "plugin": "voicestudio",
+   "cached": false,
+   "seconds": 5.51,
+   "fallbacks": []
+  },
+  {
+   "step": "align[4]",
+   "plugin": "proportional",
+   "cached": false,
+   "seconds": 0.0,
+   "fallbacks": []
+  },
+  {
+   "step": "render",
+   "plugin": "ffmpeg",
+   "cached": false,
+   "seconds": 14.08,
+   "fallbacks": []
+  }
+ ],
+ "error": null,
+ "created_at": 1791694835.8695843,
+ "updated_at": 1791694874.2167134
+}

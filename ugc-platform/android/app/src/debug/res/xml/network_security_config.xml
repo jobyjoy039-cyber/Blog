@@ -1,0 +1,4 @@
+<!-- Debug builds may talk to a local dev server over plain HTTP. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
