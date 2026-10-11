@@ -1,0 +1,12 @@
+{
+  "name": "ugc-ad-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Turn a product brief into UGC ad scripts, a hook-testing batch and AI video prompts.",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  }
+}

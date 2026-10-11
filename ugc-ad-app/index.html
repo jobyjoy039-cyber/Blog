@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UGC Ad Studio</title>
+  <meta name="description" content="Turn a product brief into UGC ad scripts, a test batch and AI video prompts.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%23e5484d%22/%3E%3Cpath d=%22M12 9l12 7-12 7z%22 fill=%22white%22/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">▶</span>
+      <div>
+        <h1>UGC Ad Studio</h1>
+        <p class="sub">Brief → script → batch of variants → AI video prompts</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <select id="preset" aria-label="Load example brief">
+        <option value="">Load an example…</option>
+      </select>
+      <select id="saved" aria-label="Load saved project">
+        <option value="">Saved projects…</option>
+      </select>
+      <button id="save" class="ghost" type="button">Save</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <form id="brief" class="panel brief" autocomplete="off">
+      <h2>1. Ad brief</h2>
+
+      <fieldset>
+        <legend>Product</legend>
+        <label>Product name <input name="product" required placeholder="GripMount"></label>
+        <div class="row">
+          <label>Price <input name="price" placeholder="$28"></label>
+          <label>Category
+            <select name="category" id="category"></select>
+          </label>
+        </div>
+        <label>What it does <span class="hint">(finishes "Product…")</span>
+          <input name="description" placeholder="is magnetic and snaps on in about two seconds">
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Story</legend>
+        <label>Audience <input name="audience" placeholder="commuters who use phone navigation"></label>
+        <label>Problem <span class="hint">(finishes "I was so done with…")</span>
+          <input name="problem" placeholder="my phone falling off the dash">
+        </label>
+        <label>How the old way fails <span class="hint">(optional, finishes "I used to have one that…")</span>
+          <input name="competitorFailure" placeholder="used a suction cup and fell off every drive">
+        </label>
+        <label>Proof point <span class="hint">(a true, specific claim, ideally with a number)</span>
+          <input name="proof" placeholder="it's held through every drive for two weeks">
+        </label>
+        <label>Demo action <span class="hint">(what we see on camera)</span>
+          <input name="demo" placeholder="creator slaps the phone onto the mount">
+        </label>
+        <div class="row">
+          <label>Setting <input name="setting" placeholder="driver seat of a parked car"></label>
+          <label>Use case for urgency <input name="useCase" placeholder="your next road trip"></label>
+        </div>
+        <label>Tone <input name="tone" placeholder="casual, slightly surprised"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Format</legend>
+        <div class="chips" id="platforms" role="group" aria-label="Platforms"></div>
+        <div class="row">
+          <label>Length: <output id="durationOut">28</output>s
+            <input type="range" name="duration" min="6" max="60" step="1" value="28">
+          </label>
+          <label>Variants: <output id="variantOut">5</output>
+            <input type="range" name="variantCount" min="1" max="8" step="1" value="5">
+          </label>
+        </div>
+        <div class="row">
+          <label>Creator role <select name="creatorRole" id="creatorRole"></select></label>
+          <label>CTA <select name="ctaType" id="ctaType"></select></label>
+        </div>
+        <label class="check"><input type="checkbox" name="disclosure" checked> Paid ad: add a disclosure label</label>
+        <label>Things you can't claim <span class="hint">(comma-separated)</span>
+          <input name="constraints" placeholder="can't claim unbreakable">
+        </label>
+      </fieldset>
+    </form>
+
+    <section class="panel output" aria-live="polite">
+      <div class="out-head">
+        <h2 id="outTitle">2. Your ad batch</h2>
+        <div class="out-actions">
+          <button type="button" id="copyMd" class="ghost">Copy Markdown</button>
+          <button type="button" id="dlMd">Download .md</button>
+          <button type="button" id="dlJson" class="ghost">.json</button>
+        </div>
+      </div>
+
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="batch" aria-selected="true">Batch</button>
+        <button role="tab" data-tab="scripts">Scripts</button>
+        <button role="tab" data-tab="prompts">Video prompts</button>
+        <button role="tab" data-tab="compliance">Claim check</button>
+        <button role="tab" data-tab="qa">QA</button>
+      </nav>
+
+      <div id="tab-batch" class="tab" role="tabpanel"></div>
+      <div id="tab-scripts" class="tab" role="tabpanel" hidden></div>
+      <div id="tab-prompts" class="tab" role="tabpanel" hidden></div>
+      <div id="tab-compliance" class="tab" role="tabpanel" hidden></div>
+      <div id="tab-qa" class="tab" role="tabpanel" hidden></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    Method adapted from
+    <a href="https://github.com/Anil-matcha/ai-creator-academy/tree/main/tracks/01-ai-video-ads-ugc" target="_blank" rel="noopener">AI Creator Academy, Track 1</a>
+    and
+    <a href="https://github.com/cliprise/awesome-ai-ugc-video-prompts" target="_blank" rel="noopener">awesome-ai-ugc-video-prompts</a>.
+    UGC style is not permission to fake real experience. Only claim what you can prove.
+  </footer>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
