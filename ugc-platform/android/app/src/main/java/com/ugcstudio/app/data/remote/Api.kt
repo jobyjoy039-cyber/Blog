@@ -60,6 +60,7 @@ data class JobRequestDto(
     val resolution: String,
     @SerialName("target_seconds") val targetSeconds: Int,
     val language: String,
+    val voice: String? = null,
 )
 
 @Serializable data class SceneDto(val kind: String, val voice: String, @SerialName("on_screen") val onScreen: String = "")

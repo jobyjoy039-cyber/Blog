@@ -1,4 +1,6 @@
-# Backend + VoiceStudio speech server.
+# Backend (voices ads with built-in KittenTTS) + optional VoiceStudio speech
+# server for voice cloning and more engines. To run without VoiceStudio:
+#   docker compose up -d api
 #   export UGC_API_KEY=$(openssl rand -hex 24)
 #   export OMNIVOICE_API_KEY=$(openssl rand -hex 24)
 #   docker compose up -d
@@ -8,11 +10,11 @@ services:
     ports: ["8080:8080"]
     environment:
       UGC_API_KEY: ${UGC_API_KEY:?set UGC_API_KEY}
+      UGC_KITTEN_VOICE: Jasper
       UGC_VOICESTUDIO_URL: http://voicestudio:3900
       UGC_VOICESTUDIO_ENGINE: kittentts
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     volumes: ["ugc-data:/data"]
-    depends_on: [voicestudio]
     restart: unless-stopped
 
   voicestudio:

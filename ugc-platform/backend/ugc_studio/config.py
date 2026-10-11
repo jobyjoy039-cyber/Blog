@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     voicestudio_url: str = "http://localhost:3900"
     voicestudio_engine: str = "kittentts"  # Apache-2.0 weights: safe for commercial ads
     voice_speed: float = 1.2
+    kitten_model: str = "KittenML/kitten-tts-mini-0.8"  # or kitten-tts-nano-0.8 (smaller, lower quality)
+    kitten_voice: str = "Jasper"  # Bella, Jasper, Luna, Bruno, Rosie, Hugo, Kiki, Leo
     allow_private_urls: bool = False  # dev only: let product links point at localhost/LAN
     fetch_user_agent: str = "UGCStudioBot/0.1 (+https://github.com/jobyjoy039-cyber/Blog)"
     font: str = "Inter"

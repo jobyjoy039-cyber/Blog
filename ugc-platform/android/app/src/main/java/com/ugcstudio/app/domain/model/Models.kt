@@ -23,6 +23,9 @@ enum class AdFramework(val wire: String, val label: String, val blurb: String) {
     COMPARISON("COMPARISON", "Old way vs new", "Side-by-side contrast"),
 }
 
+/** KittenTTS voices built into the server. */
+val KITTEN_VOICES = listOf("Jasper", "Bella", "Luna", "Bruno", "Rosie", "Hugo", "Kiki", "Leo")
+
 enum class Resolution(val wire: String) { P720("720p"), P1080("1080p"), K4("4k") }
 
 /** What the user asks for. Exactly one of [url] or [manual] is set. */
@@ -34,6 +37,8 @@ data class CreateAdParams(
     val resolution: Resolution = Resolution.P1080,
     val targetSeconds: Int = 30,
     val language: String = "en",
+    /** Voice name; null lets the server use its default. */
+    val voice: String? = null,
 )
 
 data class ManualProduct(

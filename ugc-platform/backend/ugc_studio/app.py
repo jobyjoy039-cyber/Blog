@@ -46,6 +46,10 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         await runner.start()
         yield
         await runner.stop()
+        for plugin in registry.all():  # stop model worker processes
+            close = getattr(plugin, "close", None)
+            if callable(close):
+                close()
 
     app = FastAPI(title="UGC Ad Studio API", version=__version__, lifespan=lifespan)
     app.state.registry, app.state.store, app.state.runner = registry, store, runner

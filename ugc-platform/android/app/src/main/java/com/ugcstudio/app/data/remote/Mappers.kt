@@ -16,6 +16,7 @@ fun CreateAdParams.toDto(uploadIds: List<String>) = JobRequestDto(
     resolution = resolution.wire,
     targetSeconds = targetSeconds,
     language = language,
+    voice = voice,
 )
 
 fun JobDto.toDomain() = AdJob(

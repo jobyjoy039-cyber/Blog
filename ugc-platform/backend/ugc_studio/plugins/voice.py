@@ -19,6 +19,8 @@ from .base import AlignPlugin, VoicePlugin
 from .brain_local import WORDS_PER_SECOND
 from ..domain import Word
 
+KITTEN_VOICE_NAMES = {"Bella", "Jasper", "Luna", "Bruno", "Rosie", "Hugo", "Kiki", "Leo"}
+
 
 def wav_duration(path: Path) -> float:
     try:
@@ -73,7 +75,8 @@ class VoiceStudioVoice(VoicePlugin):
 
     def synthesize(self, text: str, out_path: Path, request: JobRequest) -> float:
         data = {"text": text, "engine": self.engine, "speed": str(self.speed)}
-        if request.voice:
+        # KittenTTS voice names (e.g. "Bella") are not VoiceStudio profile ids.
+        if request.voice and request.voice not in KITTEN_VOICE_NAMES:
             data["profile_id"] = request.voice
         if request.language and request.language != "en":
             data["language"] = request.language

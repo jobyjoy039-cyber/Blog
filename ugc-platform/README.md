@@ -11,7 +11,7 @@ Paste or share a product link on Android and get back a platform-ready UGC-style
      ├── ingest   web (JSON-LD/OpenGraph/Shopify) · manual brief + uploads
      ├── analyze  claude · local rules
      ├── script   claude · framework templates (PAS, AIDA, BAB, …)
-     ├── voice    VoiceStudio server (KittenTTS, cloning engines…) · silent
+     ├── voice    KittenTTS built in (CPU) · VoiceStudio server (cloning, more engines) · silent
      ├── align    proportional (WhisperX planned)
      └── render   FFmpeg (Ken Burns, crossfades, ASS captions, ducking, −14 LUFS)
 ```
@@ -28,7 +28,7 @@ Verified in this repository (see *Testing*):
 | Manual brief | Name, price, features and reviews, plus photos picked on the phone. |
 | Analysis | Audience, pain points (taken from real review text), USPs, objections, hooks, **proof points copied only from the data**, and risky-claim warnings. |
 | Script | 8 frameworks: PAS, AIDA, BAB, Problem→Solution, Unboxing, Founder, Educational, Comparison. Scenes get a voice line, an on-screen headline and a product image. |
-| Voice | Each scene is voiced separately, so visuals cut exactly on line boundaries. Edge silence is trimmed. If the real audio overruns the target length, supporting scenes are dropped and the hook, solution, proof and CTA always stay. |
+| Voice | **KittenTTS runs built in**: CPU only, 8 English voices (Bella, Jasper, Luna, Bruno, Rosie, Hugo, Kiki, Leo), Apache-2.0. It runs in an isolated worker process that restarts itself if it crashes. VoiceStudio is an optional second engine for voice cloning and other languages. Each scene is voiced separately, so visuals cut exactly on line boundaries. Edge silence is trimmed. If the real audio overruns the target length, supporting scenes are dropped and the hook, solution, proof and CTA always stay. |
 | Render | The product shot sits over a blurred fill of itself (any image fits any aspect), with a Ken Burns push, 0.3s crossfades, word-highlighted captions above the platform UI area, scene headlines, an "Ad" disclosure label, optional music ducked under the voice, and loudness normalised to −14 LUFS. Output is H.264/AAC MP4 with faststart, plus a thumbnail. |
 | Platforms | 9:16 (TikTok, Reels, Shorts, Snapchat) · 4:5 (Facebook) · 2:3 (Pinterest) · 16:9 (YouTube, Amazon) · 1:1 (Flipkart), each at 720p, 1080p or 4K. |
 | Android | Create (link or manual + photo picker), share-to-app from any browser or store app, live progress, in-app player, share/save, library, settings (server URL, API key encrypted with an Android Keystore key, AI module picker). |
@@ -39,15 +39,16 @@ Verified in this repository (see *Testing*):
 ```bash
 # 1. Backend (needs ffmpeg and a font; Inter is the default)
 cd ugc-platform/backend
-uv venv --python 3.11 && uv pip install -e '.[claude,dev]'
+uv venv --python 3.11 && uv pip install -e '.[claude,kitten,dev]'
+# KittenTTS pulls in ~5 GB of CUDA PyTorch it never uses; remove it:
+uv pip uninstall torch triton spacy-curated-transformers curated-transformers curated-tokenizers $(uv pip list | awk '/^nvidia-/{print $1}')
 export UGC_API_KEY=$(openssl rand -hex 24)
 export ANTHROPIC_API_KEY=...          # optional: Claude writes the copy; without it the offline templates run
 .venv/bin/uvicorn ugc_studio.app:create_app --factory --port 8080
 
-# 2. Voice (optional; without it the ad renders with captions only)
-#    Run VoiceStudio (github.com/debpalash/VoiceStudio) on :3900 and install KittenTTS:
-curl -X POST localhost:3900/models/install -H 'content-type: application/json' \
-     -d '{"repo_id":"KittenML/kitten-tts-mini-0.8"}'
+# 2. Voice: KittenTTS is built in (its ~80 MB model downloads on first use). Pick a voice per
+#    request with "voice": "Bella", or set UGC_KITTEN_VOICE. For cloning or other languages, also
+#    run VoiceStudio (github.com/debpalash/VoiceStudio) on :3900; it becomes the fallback voice.
 
 # 3. Make an ad from the command line
 curl -X POST localhost:8080/jobs -H "X-API-Key: $UGC_API_KEY" -H 'content-type: application/json' \
@@ -62,7 +63,7 @@ cd ../android && ./gradlew assembleDebug    # app/build/outputs/apk/debug/app-de
 
 Or run both services with Docker: `docker compose up -d` from `ugc-platform/` (see `docker-compose.yml`).
 
-Settings are environment variables prefixed `UGC_`: `UGC_DATA_DIR`, `UGC_API_KEY`, `UGC_WORKERS`, `UGC_STEP_RETRIES`, `UGC_PREFERRED` (JSON, e.g. `{"voice":"voicestudio"}`), `UGC_ANTHROPIC_MODEL`, `UGC_VOICESTUDIO_URL`, `UGC_VOICESTUDIO_ENGINE`, `UGC_VOICE_SPEED`, `UGC_FONT`, `UGC_ALLOW_PRIVATE_URLS` (dev only: allow product links on localhost/LAN, which are blocked by default).
+Settings are environment variables prefixed `UGC_`: `UGC_DATA_DIR`, `UGC_API_KEY`, `UGC_WORKERS`, `UGC_STEP_RETRIES`, `UGC_PREFERRED` (JSON, e.g. `{"voice":"voicestudio"}`), `UGC_ANTHROPIC_MODEL`, `UGC_KITTEN_MODEL`, `UGC_KITTEN_VOICE`, `UGC_VOICESTUDIO_URL`, `UGC_VOICESTUDIO_ENGINE`, `UGC_VOICE_SPEED`, `UGC_FONT`, `UGC_ALLOW_PRIVATE_URLS` (dev only: allow product links on localhost/LAN, which are blocked by default).
 
 ## API
 
@@ -108,7 +109,7 @@ Status: ✅ built and tested · 🟡 partial · ⬜ not started. Candidate proje
 | Review mining (clustering thousands of reviews) | 🟡 | Uses reviews present on the page. ⬜ Embedding clustering (sentence-transformers, Apache-2.0) over API/CSV-sourced reviews |
 | Competitor intelligence | ⬜ | Same ingestors pointed at competitor listings, then a Claude comparison step. Ad-library data via Meta's Ad Library API |
 | Marketing brain / script generator | ✅ | 8 frameworks, caption and hashtags. ⬜ SEO titles/descriptions for listings |
-| Voice engine | ✅ | VoiceStudio server. Commercial-friendly: Kokoro-82M (Apache-2.0), OpenVoice V2 (MIT). ⚠️ XTTS-v2 (Coqui licence) and F5-TTS weights (CC-BY-NC) are non-commercial |
+| Voice engine | ✅ | KittenTTS built in (Apache-2.0) + VoiceStudio server. Commercial-friendly: Kokoro-82M (Apache-2.0), OpenVoice V2 (MIT). ⚠️ XTTS-v2 (Coqui licence) and F5-TTS weights (CC-BY-NC) are non-commercial |
 | Emotion / delivery control | 🟡 | Speed is configurable. ⬜ Per-scene emotion via engines that support instructions (VoiceStudio `instruct`) |
 | Subtitles | ✅ | Word-highlight ASS captions. ⬜ WhisperX (BSD-2) aligner plugin for exact timing; caption style presets; emoji |
 | Video generator | 🟡 | Ken Burns + crossfades. ⬜ Image-to-video service plugin: Wan 2.x (Apache-2.0); check LTX-Video and HunyuanVideo licences |
@@ -126,7 +127,7 @@ Status: ✅ built and tested · 🟡 partial · ⬜ not started. Candidate proje
 ## Testing
 
 ```bash
-cd backend && .venv/bin/pytest -q                  # 27 tests: ingest, brain, registry, orchestrator, real FFmpeg render, API
+cd backend && .venv/bin/pytest -q                  # 30 tests: ingest, brain, registry, orchestrator, real FFmpeg render, KittenTTS (incl. crash recovery), API
 cd android && ./gradlew testDebugUnitTest          # 11 tests: use cases, polling, repository against real server JSON
 ```
 

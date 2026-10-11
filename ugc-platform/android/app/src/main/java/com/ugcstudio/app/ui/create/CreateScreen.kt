@@ -59,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.ugcstudio.app.domain.model.AdFramework
 import com.ugcstudio.app.domain.model.AdPlatform
+import com.ugcstudio.app.domain.model.KITTEN_VOICES
 import com.ugcstudio.app.domain.model.Resolution
 
 @Composable
@@ -163,6 +164,12 @@ fun CreateContent(
                     value = state.seconds.toFloat(), onValueChange = { update { copy(seconds = it.toInt()) } },
                     valueRange = 8f..60f, steps = 51,
                 )
+                Text("Voice", style = MaterialTheme.typography.titleSmall)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    KITTEN_VOICES.forEach { v ->
+                        FilterChip(selected = state.voice == v, onClick = { update { copy(voice = v) } }, label = { Text(v) })
+                    }
+                }
                 Text("Resolution", style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Resolution.entries.forEach { r ->

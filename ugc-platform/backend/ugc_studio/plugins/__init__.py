@@ -5,6 +5,7 @@ from .brain_local import LocalAnalyzer, TemplateScriptWriter
 from .ingest import ManualIngest, WebIngest
 from .render_ffmpeg import FFmpegRenderer
 from .voice import ProportionalAligner, SilentVoice, VoiceStudioVoice
+from .voice_kitten import KittenVoice
 
 
 def build_registry(settings: Settings) -> Registry:
@@ -18,6 +19,7 @@ def build_registry(settings: Settings) -> Registry:
         LocalAnalyzer(),
         ClaudeScriptWriter(settings.anthropic_model),
         TemplateScriptWriter(),
+        KittenVoice(settings.kitten_model, settings.kitten_voice, settings.voice_speed),
         VoiceStudioVoice(settings.voicestudio_url, settings.voicestudio_engine, settings.voice_speed),
         SilentVoice(),
         ProportionalAligner(),

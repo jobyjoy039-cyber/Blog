@@ -17,7 +17,7 @@ jobs:
       - name: System deps (ffmpeg + caption font)
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg fonts-inter
       - uses: astral-sh/setup-uv@v6
-      - run: uv venv --python 3.11 && uv pip install -e '.[claude,dev]'
+      - run: uv venv --python 3.11 && uv pip install -e '.[claude,dev]'  # kitten tests skip without the 600 MB extra
       - run: .venv/bin/pytest -q
 
   android:

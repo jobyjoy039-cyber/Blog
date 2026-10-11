@@ -32,6 +32,7 @@ data class CreateState(
     val framework: AdFramework = AdFramework.PAS,
     val resolution: Resolution = Resolution.P1080,
     val seconds: Int = 30,
+    val voice: String = "Jasper",
     val submitting: Boolean = false,
     val error: String? = null,
 )
@@ -69,6 +70,7 @@ class CreateViewModel @Inject constructor(private val createAd: CreateAdUseCase)
             framework = s.framework,
             resolution = s.resolution,
             targetSeconds = s.seconds,
+            voice = s.voice,
         )
         _state.update { it.copy(submitting = true, error = null) }
         viewModelScope.launch {

@@ -75,7 +75,7 @@ class RepositoryTest {
         server.enqueue(MockResponse().setResponseCode(202).setBody(fixture("job_succeeded.json")))
         repo.createAd(CreateAdParams(
             manual = ManualProduct("GripMount", price = "28", imageUris = listOf("content://a", "content://b")),
-            platform = AdPlatform.REELS, framework = AdFramework.AIDA, targetSeconds = 20,
+            platform = AdPlatform.REELS, framework = AdFramework.AIDA, targetSeconds = 20, voice = "Bella",
         ))
         assertEquals("/api/uploads", server.takeRequest().path)
         assertEquals("/api/uploads", server.takeRequest().path)
@@ -84,6 +84,7 @@ class RepositoryTest {
         assertEquals("reels", body["platform"]!!.jsonPrimitive.content)
         assertEquals("AIDA", body["framework"]!!.jsonPrimitive.content)
         assertEquals(20, body["target_seconds"]!!.jsonPrimitive.content.toInt())
+        assertEquals("Bella", body["voice"]!!.jsonPrimitive.content)
         assertEquals("""["up1","up2"]""", body["brief"]!!.jsonObject["upload_ids"].toString())
     }
 
