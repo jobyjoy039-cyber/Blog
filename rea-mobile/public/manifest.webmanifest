@@ -1,0 +1,13 @@
+{
+  "name": "REA Mobile",
+  "short_name": "REA",
+  "description": "Run REA (Reverse Engineer Anything) on your computer from your phone.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#111318",
+  "theme_color": "#111318",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
