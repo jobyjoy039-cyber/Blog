@@ -6,16 +6,20 @@
 import { createServer } from "node:http";
 import { spawn, execFileSync } from "node:child_process";
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { createReadStream, createWriteStream, mkdirSync, statSync } from "node:fs";
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { networkInterfaces, homedir } from "node:os";
-import { basename, extname, join, resolve, dirname } from "node:path";
+import { basename, extname, join, resolve, dirname, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(HERE, "public");
 const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || "0.0.0.0";
-const TOKEN = process.env.REA_MOBILE_TOKEN || randomBytes(18).toString("base64url");
+// Offline bundle layout: <bundle>/app (this file), <bundle>/rea, <bundle>/rea-docs, <bundle>/node.
+const BUNDLED_REA = join(HERE, "..", "rea", "node_modules", "rea-agents", "scripts", "rea.mjs");
+const DOCS_DIR = resolve(process.env.REA_MOBILE_DOCS || join(HERE, "..", "rea-docs"));
+const TOKEN_FILE = process.env.REA_MOBILE_TOKEN_FILE || join(homedir(), ".rea-mobile-token");
+const TOKEN = process.env.REA_MOBILE_TOKEN || loadOrCreateToken();
 const UPLOAD_DIR = resolve(process.env.REA_MOBILE_UPLOADS || join(homedir(), "rea-mobile-uploads"));
 const RUN_TIMEOUT_MS = Number(process.env.REA_MOBILE_TIMEOUT_MS || 15 * 60 * 1000);
 const MAX_UPLOAD_BYTES = Number(process.env.REA_MOBILE_MAX_UPLOAD_MB || 2048) * 1024 * 1024;
@@ -32,7 +36,28 @@ const MIME = {
   ".png": "image/png",
   ".json": "application/json; charset=utf-8",
   ".webmanifest": "application/manifest+json",
+  ".md": "text/markdown; charset=utf-8",
+  ".jpg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
 };
+
+/** Keep the token across restarts so a paired phone stays paired. */
+function loadOrCreateToken() {
+  try {
+    const saved = readFileSync(TOKEN_FILE, "utf8").trim();
+    if (saved) return saved;
+  } catch {
+    /* first run */
+  }
+  const token = randomBytes(18).toString("base64url");
+  try {
+    writeFileSync(TOKEN_FILE, token, { mode: 0o600 });
+  } catch {
+    /* read-only home: token lasts for this run only */
+  }
+  return token;
+}
 
 /** Resolve how to launch REA: [executable, ...prefixArgs]. */
 function resolveRea() {
@@ -40,6 +65,7 @@ function resolveRea() {
   if (fromEnv) {
     return /\.(m?js|cjs)$/.test(fromEnv) ? [process.execPath, fromEnv] : [fromEnv];
   }
+  if (existsSync(BUNDLED_REA)) return [process.execPath, BUNDLED_REA];
   if (process.platform === "win32") {
     // .cmd shims cannot be spawned without a shell, so run the package entry point with node.
     try {
@@ -175,9 +201,12 @@ async function handleUpload(req, res, url) {
 }
 
 function serveStatic(res, pathname) {
-  const rel = pathname === "/" ? "index.html" : pathname.slice(1);
-  const file = resolve(PUBLIC_DIR, rel);
-  if (!file.startsWith(PUBLIC_DIR)) return sendJson(res, 403, { error: "Forbidden" });
+  // REA's public documentation is served without the token so <img> tags can load its figures.
+  const [root, rel] = pathname.startsWith("/rea-docs/")
+    ? [DOCS_DIR, decodeURIComponent(pathname.slice("/rea-docs/".length))]
+    : [PUBLIC_DIR, pathname === "/" ? "index.html" : decodeURIComponent(pathname.slice(1))];
+  const file = resolve(root, rel);
+  if (file !== root && !file.startsWith(root + sep)) return sendJson(res, 403, { error: "Forbidden" });
   try {
     if (!statSync(file).isFile()) throw new Error();
   } catch {
@@ -194,7 +223,12 @@ const server = createServer(async (req, res) => {
     if (!authorized(req)) return sendJson(res, 401, { error: "Invalid or missing token" });
 
     if (req.method === "GET" && url.pathname === "/api/info") {
-      return sendJson(res, 200, { rea: REA.join(" "), uploads: UPLOAD_DIR, commands: await commandsPromise });
+      return sendJson(res, 200, {
+        rea: REA.join(" "),
+        uploads: UPLOAD_DIR,
+        docs: existsSync(join(DOCS_DIR, "index.json")),
+        commands: await commandsPromise,
+      });
     }
     if (req.method === "POST" && url.pathname === "/api/commands/reload") {
       commandsPromise = loadCommands();
@@ -223,7 +257,8 @@ server.listen(PORT, HOST, () => {
     .filter((i) => i && i.family === "IPv4" && !i.internal)
     .map((i) => i.address);
   console.log(`REA Mobile is running (REA via: ${REA.join(" ")})`);
-  console.log(`Uploads are saved to ${UPLOAD_DIR}\n`);
+  console.log(`Uploads are saved to ${UPLOAD_DIR}`);
+  console.log(`Offline docs: ${existsSync(join(DOCS_DIR, "index.json")) ? DOCS_DIR : "not bundled"}\n`);
   console.log("Open one of these on your phone (same Wi-Fi):");
   for (const address of addresses.length ? addresses : ["localhost"]) {
     console.log(`  http://${address}:${PORT}/#token=${TOKEN}`);

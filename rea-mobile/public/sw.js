@@ -1,7 +1,7 @@
 // Caches the app shell so REA Mobile opens instantly from the home screen.
 // API calls always go to the network.
-const CACHE = "rea-mobile-v1";
-const SHELL = ["./", "index.html", "styles.css", "app.js", "manifest.webmanifest", "icon.svg"];
+const CACHE = "rea-mobile-v2";
+const SHELL = ["./", "index.html", "styles.css", "app.js", "docs.js", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));

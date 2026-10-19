@@ -83,6 +83,14 @@
         <ul id="history" class="list"></ul>
       </section>
 
+      <!-- Docs -->
+      <section id="view-docs" class="view">
+        <input id="docs-search" type="search" placeholder="Search REA docs…" autocomplete="off" />
+        <button type="button" id="docs-back" class="link back" hidden>‹ All pages</button>
+        <ul id="docs-list" class="list docs-list"></ul>
+        <article id="docs-reader" class="doc" hidden></article>
+      </section>
+
       <!-- Settings -->
       <section id="view-settings" class="view">
         <label class="field">
@@ -105,6 +113,7 @@
     <nav class="tabbar">
       <button type="button" data-view="run" class="active">Run</button>
       <button type="button" data-view="history">History</button>
+      <button type="button" data-view="docs">Docs</button>
       <button type="button" data-view="settings">Settings</button>
     </nav>
 

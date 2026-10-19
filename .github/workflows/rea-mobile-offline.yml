@@ -1,0 +1,57 @@
+# Builds the offline REA Mobile bundles (portable Node.js + REA + docs + app) for every platform.
+# Run it from the Actions tab ("Run workflow") to get downloadable artifacts, or push a tag
+# like rea-mobile-v1.0.0 to publish them as a GitHub release.
+name: REA Mobile offline bundles
+
+on:
+  workflow_dispatch:
+    inputs:
+      rea_version:
+        description: "rea-agents version (blank = latest)"
+        required: false
+  push:
+    tags: ["rea-mobile-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [linux-x64, linux-arm64, macos-x64, macos-arm64, windows-x64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build bundle
+        working-directory: rea-mobile
+        run: |
+          node scripts/build-offline.mjs --target ${{ matrix.target }} \
+            ${{ inputs.rea_version && format('--rea-version {0}', inputs.rea_version) || '' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rea-mobile-offline-${{ matrix.target }}
+          path: |
+            rea-mobile/dist/*.tar.gz
+            rea-mobile/dist/*.zip
+          compression-level: 0
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: bundles
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: bundles/*
+          body: |
+            Offline REA Mobile bundles. Download the one for your computer, extract it, and run
+            `start.sh` (Linux), `start.command` (macOS) or `start.bat` (Windows). No internet needed.

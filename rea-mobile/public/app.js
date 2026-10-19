@@ -1,5 +1,7 @@
 // REA Mobile front end. Talks to server.mjs on the same origin.
 
+import { createDocs } from "./docs.js";
+
 const $ = (id) => document.getElementById(id);
 const store = {
   get(key, fallback) {
@@ -35,6 +37,7 @@ const MAX_SAVED_OUTPUT = 200_000;
 let token = store.get("token", "");
 let commands = [];
 let running = null;
+const docs = createDocs({ list: $("docs-list"), reader: $("docs-reader"), search: $("docs-search"), back: $("docs-back") });
 
 // A token passed in the link fragment (#token=...) never reaches server logs.
 const fragment = new URLSearchParams(location.hash.slice(1));
@@ -61,6 +64,7 @@ function showView(name) {
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === `view-${name}`));
   document.querySelectorAll(".tabbar button").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
   if (name === "history") renderHistory();
+  if (name === "docs") docs.load();
 }
 
 /** Split a shell-like option string, honouring single and double quotes. */

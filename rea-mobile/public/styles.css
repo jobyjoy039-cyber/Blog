@@ -149,3 +149,24 @@ button:disabled { opacity: 0.5; }
 }
 .tabbar button { flex: 1; min-height: 56px; background: none; color: var(--muted); border-radius: 0; }
 .tabbar button.active { color: var(--accent); }
+
+#docs-search { margin-bottom: 12px; }
+.back { margin: -4px 0 8px -6px; }
+.docs-list li { cursor: pointer; }
+.docs-list .title { font-weight: 600; }
+.docs-list .meta { margin: 2px 0 0; }
+
+.doc { font-size: 15px; line-height: 1.6; overflow-wrap: anywhere; }
+.doc h1 { font-size: 24px; line-height: 1.25; }
+.doc h2 { font-size: 20px; margin-top: 28px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+.doc h3 { font-size: 17px; margin-top: 22px; }
+.doc a { color: var(--accent); }
+.doc img { max-width: 100%; height: auto; border-radius: 8px; }
+.doc code { font: 13px var(--mono); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+.doc pre { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; overflow-x: auto; }
+.doc pre code { border: 0; padding: 0; background: none; font-size: 12.5px; white-space: pre; }
+.doc blockquote { margin: 12px 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--surface); border-radius: 0 8px 8px 0; }
+.doc .table { overflow-x: auto; margin: 12px 0; }
+.doc table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+.doc th, .doc td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; }
+.doc th { background: var(--surface); }
