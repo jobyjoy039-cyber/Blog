@@ -1,0 +1,43 @@
+{
+  "movies": [
+    {
+      "id": "tears-of-steel",
+      "title": "Tears of Steel",
+      "year": 2012,
+      "durationMinutes": 12,
+      "rating": "PG-13",
+      "genres": ["Sci-Fi", "Action"],
+      "featured": true,
+      "description": "In a future Amsterdam, a group of warriors and scientists gather at the Oude Kerk to stage a desperate attempt to rescue the world from destructive robots.",
+      "poster": null,
+      "stream": "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8",
+      "credit": "(c) Blender Foundation | mango.blender.org | CC BY 3.0"
+    },
+    {
+      "id": "big-buck-bunny",
+      "title": "Big Buck Bunny",
+      "year": 2008,
+      "durationMinutes": 10,
+      "rating": "G",
+      "genres": ["Animation", "Comedy"],
+      "featured": true,
+      "description": "A giant, gentle rabbit is pushed too far by three bullying rodents and decides to teach them a lesson they will never forget.",
+      "poster": null,
+      "stream": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+      "credit": "(c) Blender Foundation | peach.blender.org | CC BY 3.0"
+    },
+    {
+      "id": "elephants-dream",
+      "title": "Elephants Dream",
+      "year": 2006,
+      "durationMinutes": 11,
+      "rating": "PG",
+      "genres": ["Animation", "Sci-Fi"],
+      "featured": true,
+      "description": "Two men, the old Proog and the young Emo, explore a vast, surreal machine world that seems to have a mind of its own.",
+      "poster": "https://download.blender.org/ED/cover.jpg",
+      "stream": "https://download.blender.org/ED/elephantsdream-720-h264-st-aac.mov",
+      "credit": "(c) Blender Foundation | orange.blender.org | CC BY 2.5"
+    }
+  ]
+}
