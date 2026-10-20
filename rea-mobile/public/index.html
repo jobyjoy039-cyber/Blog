@@ -31,7 +31,7 @@
         </label>
 
         <label class="field">
-          <span>Target path on computer</span>
+          <span id="target-label">Target path on computer</span>
           <div class="row">
             <input id="target" placeholder="/absolute/path/to/app (optional)" autocomplete="off" autocapitalize="off" spellcheck="false" />
             <button type="button" id="upload-btn" class="secondary" title="Send a file from this phone">Upload</button>
@@ -93,7 +93,20 @@
 
       <!-- Settings -->
       <section id="view-settings" class="view">
-        <label class="field">
+        <div id="mode-card" class="field" hidden>
+          <span>Run REA on</span>
+          <div class="segmented">
+            <label><input type="radio" name="mode" value="phone" /> This phone</label>
+            <label><input type="radio" name="mode" value="computer" /> My computer</label>
+          </div>
+          <small class="hint">This phone works offline with REA's built-in analyzers. Your computer adds desktop engines such as Ghidra, Hopper, IDA and JADX.</small>
+        </div>
+        <label id="computer-fields" class="field" hidden>
+          <span>Computer link</span>
+          <input id="computer-link" type="url" placeholder="http://192.168.1.20:8787/#token=…" autocomplete="off" autocapitalize="off" spellcheck="false" />
+          <small class="hint">Run <code>node server.mjs</code> (or the offline bundle) on your computer and paste the link it prints.</small>
+        </label>
+        <label id="token-fields" class="field">
           <span>Access token</span>
           <input id="token" type="password" autocomplete="off" />
           <small class="hint">Printed by <code>node server.mjs</code> on your computer.</small>
@@ -103,12 +116,25 @@
           <button type="button" id="reload-commands" class="secondary">Reload commands</button>
         </div>
         <div id="server-info" class="card"></div>
-        <div class="card">
+        <div class="card web-only">
           <strong>Install on your phone</strong>
           <p>iPhone: Share → <em>Add to Home Screen</em>. Android: browser menu → <em>Install app</em>.</p>
         </div>
       </section>
     </main>
+
+    <!-- Installed apps picker (Android app only) -->
+    <div id="apps-sheet" class="sheet" hidden>
+      <div class="sheet-panel">
+        <div class="sheet-head">
+          <strong>Apps on this phone</strong>
+          <button type="button" id="apps-close" class="link">Close</button>
+        </div>
+        <input id="apps-search" type="search" placeholder="Search apps…" autocomplete="off" />
+        <label class="check"><input type="checkbox" id="apps-system" /> Include system apps</label>
+        <ul id="apps-list" class="list docs-list"></ul>
+      </div>
+    </div>
 
     <nav class="tabbar">
       <button type="button" data-view="run" class="active">Run</button>

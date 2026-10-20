@@ -11,6 +11,9 @@ over your Wi-Fi.
  phone (REA Mobile app)  ── Wi-Fi ──▶  your computer: server.mjs ──▶ rea <command>
 ```
 
+> **Android app:** [`android/`](android/README.md) has an installable APK build that runs
+> REA on the phone itself, offline, and can also connect to a computer running this server.
+
 ## What it does
 
 - Run any REA command (`doctor`, `inspect-artifact`, `inspect-android-package`,
@@ -135,7 +138,9 @@ Anyone with the link can run REA commands on your computer, and some REA command
 rea-mobile/
 ├── server.mjs              bridge server (no dependencies)
 ├── scripts/
-│   └── build-offline.mjs   builds the offline bundle
+│   ├── build-offline.mjs   builds the offline bundle
+│   └── rea-docs.mjs        copies REA's docs for the Docs tab
+├── android/                Android app (see android/README.md)
 └── public/                 the phone app
     ├── index.html
     ├── app.js

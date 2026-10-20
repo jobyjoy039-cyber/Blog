@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the web interface's background color in light and dark mode. -->
+    <color name="bg_dynamic">#F6F7F9</color>
+</resources>

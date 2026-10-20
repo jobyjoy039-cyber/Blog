@@ -1,0 +1,58 @@
+# Builds the REA Mobile Android app (REA runs on the phone). Run it from the Actions tab
+# ("Run workflow") to get the APK as an artifact, or push a tag like rea-mobile-android-v1.0.0
+# to publish it as a release.
+name: REA Mobile Android app
+
+on:
+  workflow_dispatch:
+    inputs:
+      rea_version:
+        description: "rea-agents version (blank = latest)"
+        required: false
+  push:
+    tags: ["rea-mobile-android-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.REA_MOBILE_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/rea-mobile.jks"
+            echo "KEYSTORE_ARGS=--keystore $RUNNER_TEMP/rea-mobile.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No REA_MOBILE_KEYSTORE_B64 secret: this APK is signed with a one-off key, so installing it over a previous build requires uninstalling first."
+          fi
+      - name: Build APK
+        working-directory: rea-mobile
+        env:
+          REA_MOBILE_KEYSTORE_PASSWORD: ${{ secrets.REA_MOBILE_KEYSTORE_PASSWORD }}
+        run: |
+          node android/build-apk.mjs $KEYSTORE_ARGS \
+            ${{ inputs.rea_version && format('--rea {0}', inputs.rea_version) || '' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rea-mobile-android
+          path: rea-mobile/android/dist/*.apk
+          compression-level: 0
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: rea-mobile/android/dist/*.apk
+          body: |
+            REA Mobile for Android: REA runs on the phone, offline. Download the APK on your
+            phone and open it to install (Android 7+, 64-bit ARM).

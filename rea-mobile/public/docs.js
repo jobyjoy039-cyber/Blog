@@ -20,7 +20,7 @@ function inline(text, page) {
     .replace(/!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g, (_, alt, src) => {
       const local = resolveLink(src, page);
       // Remote images are online status badges; skip them so the reader never leaves the local network.
-      return /^[a-z]+:/i.test(local) ? "" : `<img alt="${alt}" src="/rea-docs/${local}" loading="lazy">`;
+      return /^[a-z]+:/i.test(local) ? "" : `<img alt="${alt}" src="rea-docs/${local}" loading="lazy">`;
     })
     .replace(/\[([^\]]+)\]\(([^)\s]+)[^)]*\)/g, (_, label, href) => {
       const target = resolveLink(href.replace(/&amp;/g, "&"), page);
@@ -117,7 +117,7 @@ export function createDocs({ list, reader, search, back }) {
     search.hidden = true;
     back.hidden = false;
     reader.hidden = false;
-    const res = await fetch(`/rea-docs/${file}`);
+    const res = await fetch(`rea-docs/${file}`);
     reader.innerHTML = res.ok ? renderMarkdown(await res.text(), file) : `<p>Page not found: ${escape(file)}</p>`;
     const anchor = hash && [...reader.querySelectorAll("h1,h2,h3,h4")].find((h) => slug(h.textContent) === hash);
     (anchor || reader).scrollIntoView({ block: "start" });
@@ -138,7 +138,7 @@ export function createDocs({ list, reader, search, back }) {
     event.preventDefault();
     const target = link.dataset.doc;
     if (target.split("#")[0].endsWith(".md")) open(target);
-    else window.open(`/rea-docs/${target}`, "_blank");
+    else window.open(`rea-docs/${target}`, "_blank");
   });
   search.addEventListener("input", renderList);
   back.addEventListener("click", showList);
@@ -147,7 +147,7 @@ export function createDocs({ list, reader, search, back }) {
     async load() {
       if (loaded) return;
       try {
-        const res = await fetch("/rea-docs/index.json");
+        const res = await fetch("rea-docs/index.json");
         if (!res.ok) throw new Error();
         pages = (await res.json()).pages;
         loaded = true;

@@ -259,6 +259,10 @@ server.listen(PORT, HOST, () => {
   console.log(`REA Mobile is running (REA via: ${REA.join(" ")})`);
   console.log(`Uploads are saved to ${UPLOAD_DIR}`);
   console.log(`Offline docs: ${existsSync(join(DOCS_DIR, "index.json")) ? DOCS_DIR : "not bundled"}\n`);
+  if (/^(127\.|localhost$|::1$)/.test(HOST)) {
+    console.log(`Listening on this device only: http://${HOST}:${PORT}/`);
+    return;
+  }
   console.log("Open one of these on your phone (same Wi-Fi):");
   for (const address of addresses.length ? addresses : ["localhost"]) {
     console.log(`  http://${address}:${PORT}/#token=${TOKEN}`);

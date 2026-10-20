@@ -1,4 +1,7 @@
-// REA Mobile front end. Talks to server.mjs on the same origin.
+// REA Mobile front end. It always talks to the REA server on its own origin:
+// server.mjs in a browser, or inside the Android app (window.ReaAndroid present)
+// either REA running on the phone (page at http://127.0.0.1:<port>) or the
+// computer's server.mjs page, which the app opens directly in computer mode.
 
 import { createDocs } from "./docs.js";
 
@@ -21,7 +24,9 @@ const store = {
   },
 };
 
-const QUICK_ACTIONS = [
+const android = window.ReaAndroid || null;
+
+const COMPUTER_ACTIONS = [
   { label: "Doctor", command: "doctor" },
   { label: "Inspect file", command: "inspect-artifact" },
   { label: "Android APK", command: "inspect-android-package" },
@@ -31,12 +36,27 @@ const QUICK_ACTIONS = [
   { label: ".NET assembly", command: "inspect-managed-artifact" },
   { label: "Providers", command: "providers" },
 ];
+// Analyses REA can run on the phone itself: its built-in parsers, no desktop engines.
+const PHONE_ACTIONS = [
+  { label: "Phone app", command: "inspect-artifact", pickApp: true },
+  { label: "Inspect file", command: "inspect-artifact" },
+  { label: "Flutter app", command: "identify-flutter-build" },
+  { label: "SQLite database", command: "inspect-sqlite-database" },
+  { label: "JS / Electron app", command: "analyze-javascript-application" },
+  { label: "Go binary", command: "inspect-go-binary" },
+  { label: "Rust binary", command: "inspect-rust-binary" },
+  { label: ".NET assembly", command: "inspect-managed-artifact" },
+  { label: "Doctor", command: "doctor" },
+];
 const MAX_HISTORY = 50;
 const MAX_SAVED_OUTPUT = 200_000;
 
+const androidConfig = android ? JSON.parse(android.getConfig()) : null;
+const mode = !android ? "browser" : location.origin === androidConfig.localBase ? "phone" : "computer";
 let token = store.get("token", "");
 let commands = [];
 let running = null;
+let connectTimer = null;
 const docs = createDocs({ list: $("docs-list"), reader: $("docs-reader"), search: $("docs-search"), back: $("docs-back") });
 
 // A token passed in the link fragment (#token=...) never reaches server logs.
@@ -47,11 +67,27 @@ if (fragment.get("token")) {
   history.replaceState(null, "", location.pathname);
 }
 
+function authToken() {
+  return mode === "phone" ? androidConfig.localToken : token;
+}
+
 function api(path, options = {}) {
   return fetch(path, {
     ...options,
-    headers: { ...(options.headers || {}), authorization: `Bearer ${token}` },
+    headers: { ...(options.headers || {}), authorization: `Bearer ${authToken()}` },
   });
+}
+
+/** Accept a pasted link like http://192.168.1.20:8787/#token=abc. */
+function parseComputerLink(text) {
+  try {
+    const url = new URL(text.trim());
+    const linkToken = new URLSearchParams(url.hash.slice(1)).get("token");
+    if (!/^https?:$/.test(url.protocol) || !linkToken) return null;
+    return { base: url.origin, token: linkToken };
+  } catch {
+    return null;
+  }
 }
 
 function setStatus(text, kind) {
@@ -97,12 +133,51 @@ function describeCommand() {
   $("command-desc").textContent = found ? found.description : "";
 }
 
+function quickActions() {
+  return mode === "phone" ? PHONE_ACTIONS : COMPUTER_ACTIONS;
+}
+
+function renderModeUi() {
+  $("quick").innerHTML = quickActions()
+    .map((q, i) => `<button type="button" data-i="${i}">${q.label}</button>`)
+    .join("");
+  $("target-label").textContent = mode === "phone" ? "Target path on this phone" : "Target path on computer";
+  $("upload-btn").textContent = mode === "phone" ? "Choose file" : "Upload";
+  $("mode-card").hidden = !android;
+  $("token-fields").hidden = mode !== "browser";
+  $("computer-fields").hidden = mode !== "computer";
+  document.querySelectorAll('input[name="mode"]').forEach((r) => (r.checked = r.value === mode));
+  if (android && androidConfig.computerBase) {
+    $("computer-link").value = `${androidConfig.computerBase}/#token=${androidConfig.computerToken}`;
+  }
+}
+
 async function connect() {
-  if (!token) {
+  clearTimeout(connectTimer);
+  if (mode === "browser" && !token) {
     setStatus("No token", "err");
     showView("settings");
     $("server-info").textContent = "Paste the token printed by server.mjs, or open the link it prints.";
     return;
+  }
+  if (mode === "phone") {
+    if (location.hash === "#computer-unreachable") {
+      history.replaceState(null, "", location.pathname);
+      alert("Couldn't reach your computer, so REA is running on this phone. Check that server.mjs is running and the phone is on the same Wi-Fi, then pick My computer in Settings again.");
+    }
+    // REA unpacks itself on first launch; keep checking until its server answers.
+    // If another app took REA's port, the runtime moved; follow it.
+    const current = JSON.parse(android.getConfig()).localBase;
+    if (current !== location.origin) return void location.replace(`${current}/index.html`);
+    const state = android.runtimeStatus();
+    if (state !== "running") {
+      setStatus(state.startsWith("error") ? "REA failed" : "Starting REA…", state.startsWith("error") ? "err" : "");
+      $("server-info").textContent = state.startsWith("error")
+        ? `REA could not start on this phone: ${state.slice(6)}`
+        : `Preparing REA on this phone (${state}). The first launch takes a little while.`;
+      if (!state.startsWith("error")) connectTimer = setTimeout(connect, 1000);
+      return;
+    }
   }
   setStatus("Connecting…");
   try {
@@ -114,17 +189,19 @@ async function connect() {
     $("command-list").innerHTML = commands
       .map((c) => `<option value="${c.name}">${c.description.replace(/"/g, "&quot;")}</option>`)
       .join("");
+    const where = mode === "phone" ? "on this phone" : mode === "computer" ? "on your computer" : "";
     $("server-info").innerHTML =
-      `<strong>Connected</strong><p>${commands.length} REA commands available.<br>` +
-      `REA: <code></code><br>Uploads: <code></code></p>`;
+      `<strong>Connected ${where}</strong><p>${commands.length} REA commands available.<br>` +
+      `REA: <code></code><br>Files: <code></code></p>`;
     const codes = $("server-info").querySelectorAll("code");
     codes[0].textContent = info.rea;
     codes[1].textContent = info.uploads;
-    setStatus("Connected", "ok");
+    setStatus(mode === "phone" ? "On phone" : "Connected", "ok");
     describeCommand();
   } catch (error) {
     setStatus("Offline", "err");
     $("server-info").textContent = `Could not connect: ${error.message}`;
+    if (mode === "phone") connectTimer = setTimeout(connect, 2000);
   }
 }
 
@@ -219,24 +296,26 @@ function renderHistory() {
 
 async function upload(file) {
   const progress = $("upload-progress");
-  progress.textContent = `Uploading ${file.name}…`;
+  const verb = mode === "phone" ? "Copying" : "Uploading";
+  progress.textContent = `${verb} ${file.name}…`;
   // XHR (not fetch) so large files report progress on mobile browsers.
   const xhr = new XMLHttpRequest();
   xhr.open("POST", `/api/upload?name=${encodeURIComponent(file.name)}`);
-  xhr.setRequestHeader("authorization", `Bearer ${token}`);
+  xhr.setRequestHeader("authorization", `Bearer ${authToken()}`);
   xhr.upload.onprogress = (e) => {
-    if (e.lengthComputable) progress.textContent = `Uploading ${file.name}… ${Math.round((e.loaded / e.total) * 100)}%`;
+    if (e.lengthComputable) progress.textContent = `${verb} ${file.name}… ${Math.round((e.loaded / e.total) * 100)}%`;
   };
   xhr.onload = () => {
     const body = JSON.parse(xhr.responseText || "{}");
     if (xhr.status === 200) {
       $("target").value = body.path;
-      progress.textContent = `Uploaded to computer (${(body.size / 1048576).toFixed(1)} MB)`;
+      const where = mode === "phone" ? "Ready to analyze" : "Uploaded to computer";
+      progress.textContent = `${where} (${(body.size / 1048576).toFixed(1)} MB)`;
     } else {
-      progress.textContent = `Upload failed: ${body.error || xhr.status}`;
+      progress.textContent = `Failed: ${body.error || xhr.status}`;
     }
   };
-  xhr.onerror = () => (progress.textContent = "Upload failed: network error");
+  xhr.onerror = () => (progress.textContent = "Failed: network error");
   xhr.send(file);
 }
 
@@ -250,11 +329,68 @@ async function showHelp() {
   $("output").textContent = body.help || body.error;
 }
 
-// Wire up UI
-$("quick").innerHTML = QUICK_ACTIONS.map((q, i) => `<button type="button" data-i="${i}">${q.label}</button>`).join("");
+// ---- Installed apps (Android only) ----
+
+let installedApps = [];
+
+function openAppPicker(command) {
+  $("apps-sheet").hidden = false;
+  $("apps-sheet").dataset.command = command;
+  $("apps-search").value = "";
+  installedApps = JSON.parse(android.listApps($("apps-system").checked));
+  renderApps();
+}
+
+function renderApps() {
+  const query = $("apps-search").value.trim().toLowerCase();
+  const list = $("apps-list");
+  const shown = installedApps.filter((a) => !query || a.label.toLowerCase().includes(query) || a.pkg.includes(query));
+  list.innerHTML = shown.length ? "" : '<li class="meta">No matching apps.</li>';
+  for (const app of shown.slice(0, 300)) {
+    const li = document.createElement("li");
+    li.innerHTML = '<div class="title"></div><div class="meta"></div>';
+    li.querySelector(".title").textContent = app.label;
+    li.querySelector(".meta").textContent =
+      `${app.pkg} · ${app.version || "?"} · ${(app.size / 1048576).toFixed(1)} MB${app.splits ? ` · ${app.splits} split APKs` : ""}`;
+    li.addEventListener("click", () => chooseApp(app));
+    list.appendChild(li);
+  }
+}
+
+function chooseApp(app) {
+  $("apps-sheet").hidden = true;
+  $("command").value = $("apps-sheet").dataset.command;
+  describeCommand();
+  const progress = $("upload-progress");
+  if (mode === "phone") {
+    // Installed APKs are readable in place; no copy needed.
+    $("target").value = app.path;
+    progress.textContent = `${app.label} (${app.pkg})`;
+    return;
+  }
+  const callback = `cb${Date.now()}`;
+  window.__reaUpload = window.__reaUpload || {};
+  window.__reaUpload[callback] = (event) => {
+    if (event.progress !== undefined) progress.textContent = `Uploading ${app.label}… ${event.progress}%`;
+    else if (event.path) {
+      $("target").value = event.path;
+      progress.textContent = `Uploaded ${app.label} to computer`;
+      delete window.__reaUpload[callback];
+    } else {
+      progress.textContent = `Upload failed: ${event.error}`;
+      delete window.__reaUpload[callback];
+    }
+  };
+  progress.textContent = `Uploading ${app.label}…`;
+  android.uploadFile(app.path, `${app.pkg}.apk`, `${location.origin}/api/upload`, authToken(), callback);
+}
+
+// ---- Wire up UI ----
+
 $("quick").addEventListener("click", (event) => {
-  const action = QUICK_ACTIONS[event.target.dataset.i];
+  const action = quickActions()[event.target.dataset.i];
   if (!action) return;
+  if (action.pickApp) return openAppPicker(action.command);
   $("command").value = action.command;
   describeCommand();
   if (action.command !== "doctor" && action.command !== "providers") $("target").focus();
@@ -265,10 +401,15 @@ $("stop-btn").addEventListener("click", () => running?.abort());
 $("help-btn").addEventListener("click", showHelp);
 $("upload-btn").addEventListener("click", () => $("upload-file").click());
 $("upload-file").addEventListener("change", (e) => e.target.files[0] && upload(e.target.files[0]));
-$("copy-btn").addEventListener("click", () => navigator.clipboard?.writeText($("output").textContent));
+$("copy-btn").addEventListener("click", () => {
+  const text = $("output").textContent;
+  if (android) android.copy(text);
+  else navigator.clipboard?.writeText(text);
+});
 $("share-btn").addEventListener("click", () => {
   const text = $("output").textContent;
-  if (navigator.share) navigator.share({ title: $("output-label").textContent, text }).catch(() => {});
+  if (android) android.share($("output-label").textContent, text);
+  else if (navigator.share) navigator.share({ title: $("output-label").textContent, text }).catch(() => {});
   else navigator.clipboard?.writeText(text);
 });
 $("clear-history").addEventListener("click", () => {
@@ -277,15 +418,53 @@ $("clear-history").addEventListener("click", () => {
 });
 $("token").value = token;
 $("save-token").addEventListener("click", () => {
-  token = $("token").value.trim();
-  store.set("token", token);
+  if (android && !$("computer-fields").hidden) {
+    const parsed = parseComputerLink($("computer-link").value);
+    if (!parsed) {
+      $("server-info").textContent = "That doesn't look like the link server.mjs prints (http://…:8787/#token=…).";
+      return;
+    }
+    return android.useComputer(parsed.base, parsed.token);
+  } else if (mode === "browser") {
+    token = $("token").value.trim();
+    store.set("token", token);
+  } else if (android.runtimeStatus().startsWith("error")) {
+    android.stopRuntime(); // retry: connect() starts it again
+  }
   connect().then(() => commands.length && showView("run"));
 });
+document.querySelectorAll('input[name="mode"]').forEach((radio) =>
+  radio.addEventListener("change", () => {
+    if (radio.value === "phone") return android.usePhone();
+    // Show the link field; Save & connect opens the computer.
+    $("computer-fields").hidden = false;
+    $("computer-link").focus();
+  }),
+);
 $("reload-commands").addEventListener("click", async () => {
   await api("/api/commands/reload", { method: "POST" });
   connect();
 });
+$("apps-search").addEventListener("input", renderApps);
+$("apps-system").addEventListener("change", () => openAppPicker($("apps-sheet").dataset.command));
+$("apps-close").addEventListener("click", () => ($("apps-sheet").hidden = true));
 document.querySelectorAll(".tabbar button").forEach((b) => b.addEventListener("click", () => showView(b.dataset.view)));
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+// Android back button: close the app picker or a doc page before leaving the app.
+window.reaBack = () => {
+  if (!$("apps-sheet").hidden) {
+    $("apps-sheet").hidden = true;
+  } else if (!$("docs-back").hidden && $("view-docs").classList.contains("active")) {
+    $("docs-back").click();
+  } else if (!$("view-run").classList.contains("active")) {
+    showView("run");
+  } else {
+    return false;
+  }
+  return true;
+};
+
+if (android) document.documentElement.classList.add("android");
+else if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+renderModeUi();
 connect();

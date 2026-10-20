@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">REA Mobile</string>
+    <string name="channel_name">REA on this phone</string>
+    <string name="notification_running">REA is ready on this phone</string>
+    <string name="notification_preparing">Preparing REA…</string>
+    <string name="notification_stop">Stop</string>
+    <string name="copied">Copied</string>
+</resources>
