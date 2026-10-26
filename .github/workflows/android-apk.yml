@@ -1,0 +1,27 @@
+name: StykAnimate AI Android APK
+
+on:
+  push:
+    paths:
+      - 'stykanimate-android/**'
+      - '.github/workflows/android-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build APK
+        run: ./stykanimate-android/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StykAnimate-AI-debug-apk
+          path: stykanimate-android/dist/StykAnimate-AI-debug.apk
