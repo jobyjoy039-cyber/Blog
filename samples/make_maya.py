@@ -472,6 +472,62 @@ def scene_end(layer, t):
         ctext(d, "Chapter 6", font(SERIF_I, 32), 410, CREAM + (255,))
     sub(layer, 1, fn)
 
+# ------------------------------------------------------------------ guide light
+def _compass_tip(t):
+    ang = math.radians(-90 + 360 * eio(seg(t, 4.3, 7.3)))
+    return (640 + 150 * math.cos(ang), 390 + 150 * math.sin(ang), 150)
+def _rival(t):
+    ang = math.radians(150 + (t - 10) * 35)
+    return (640 + 220 * math.cos(ang), 390 + 210 * math.sin(ang), 140)
+def _man(t):
+    walk, fall = eio(seg(t, 46.8, 53.8)), eo(seg(t, 53.8, 54.4))
+    sc = 0.45 + 0.75 * walk
+    return (640, 360 + 112 * walk + 60 * fall - 80 * sc, 150 + 70 * sc)
+def _pen(t): return (900, 290, 420)
+
+# (start time, target) — target is (x, y, radius) or a function of t following a moving subject
+FOCUS = [
+    (0.0, (640, 340, 340)),
+    (2.6, (640, 380, 260)), (4.2, _compass_tip), (7.6, (640, 390, 210)), (10.0, _rival),
+    (12.7, (640, 380, 170)), (14.7, (640, 380, 330)), (17.2, (640, 380, 190)),
+    (20.3, (640, 370, 260)), (22.6, (640, 370, 150)), (23.7, (640, 370, 310)),
+    (26.1, (400, 400, 230)), (27.6, (880, 400, 240)),
+    (29.5, (640, 300, 520)), (31.1, (260, 300, 190)), (35.2, (950, 320, 190)), (38.4, (640, 500, 200)),
+    (42.7, (640, 210, 260)), (46.6, _man), (50.5, (640, 535, 270)), (52.6, _man),
+    (55.6, (640, 600, 330)), (57.6, (640, 360, 430)),
+    (63.7, (640, 140, 400)), (69.7, (640, 430, 650)), (72.5, (640, 145, 430)),
+    (76.3, _pen), (78.2, (640, 360, 340)),
+]
+GLIDE = 0.7
+
+def _target(k, t):
+    v = FOCUS[k][1]
+    return v(t) if callable(v) else v
+
+def focus_at(t):
+    k = max(i for i, (s, _) in enumerate(FOCUS) if s <= t)
+    cur = _target(k, t)
+    if k == 0:
+        return cur
+    m = eio(seg(t, FOCUS[k][0], FOCUS[k][0] + GLIDE))
+    prev = _target(k - 1, t)
+    return tuple(p + (c - p) * m for p, c in zip(prev, cur))
+
+_GRID = None
+def apply_light(frame, t):
+    """Dim everything outside a soft warm spotlight centred on the current focus."""
+    global _GRID
+    if _GRID is None:
+        yy, xx = np.mgrid[0:H * S, 0:W * S].astype(np.float32)
+        _GRID = (xx / S, yy / S)
+    x, y, r = focus_at(t)
+    breathe = 1 + 0.03 * math.sin(t * 2.2)
+    d2 = ((_GRID[0] - x) ** 2 + ((_GRID[1] - y) * 1.15) ** 2) / (r * breathe) ** 2
+    lit = np.exp(-d2 * 0.9)[..., None]
+    px = np.asarray(frame.convert("RGB"), np.float32)
+    px = px * (0.58 + 0.42 * lit) + lit * np.array([255, 200, 130], np.float32) * 0.09
+    return Image.fromarray(np.clip(px, 0, 255).astype(np.uint8)).convert("RGBA")
+
 SCENES = [(0.0, 2.55, scene_title), (2.35, 12.7, scene_rigveda), (12.5, 19.9, scene_upanishads),
           (19.7, 29.2, scene_gaudapada), (29.0, 42.8, scene_origin), (42.6, 63.8, scene_palace),
           (63.6, 78.5, scene_reality), (78.2, DUR, scene_end)]
@@ -487,6 +543,8 @@ def main():
     for i in range(n):
         if only and i not in only:
             continue
+        if not only and (fdir / f"f{i:05d}.png").exists():
+            continue
         t = TNOW = i / FR
         frame = bg.copy()
         for s0, s1, fn in SCENES:
@@ -500,6 +558,7 @@ def main():
             if a < 1:
                 lay.putalpha(lay.getchannel("A").point(lambda v: int(v * a)))
             frame.alpha_composite(lay)
+        frame = apply_light(frame, t)
         cap = new_layer()
         captions(ImageDraw.Draw(cap), t)
         frame.alpha_composite(cap)
