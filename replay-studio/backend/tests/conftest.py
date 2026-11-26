@@ -47,7 +47,9 @@ def ffmpeg_loop_pids() -> list[int]:
             cmd = (p / "cmdline").read_bytes().split(b"\0")
         except OSError:
             continue
-        if cmd and cmd[0].endswith(b"ffmpeg") and b"-stream_loop" in cmd:
+        # cmd[1] covers the arm64 Android build run through qemu-aarch64 in test_android_ffmpeg.py
+        if cmd and (cmd[0].endswith(b"ffmpeg") or (len(cmd) > 1 and cmd[1].endswith(b"ffmpeg"))) \
+                and b"-stream_loop" in cmd:
             pids.append(int(p.name))
     return pids
 

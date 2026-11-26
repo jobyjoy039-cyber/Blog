@@ -61,6 +61,10 @@ val stagePython by tasks.registering(Sync::class) {
 }
 
 tasks.named("preBuild") { dependsOn(stageFfmpeg, stagePython) }
+tasks.matching { it.name.contains("PythonSources") || it.name.contains("Python") && it.name.startsWith("merge") }
+    .configureEach { dependsOn(stagePython) }
+tasks.matching { it.name.contains("JniLib") || it.name.contains("NativeLibs") }
+    .configureEach { dependsOn(stageFfmpeg) }
 
 chaquopy {
     defaultConfig {

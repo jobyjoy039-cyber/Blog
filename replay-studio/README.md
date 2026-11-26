@@ -11,7 +11,7 @@ until you press **Stop stream**. The watch URL and live chat stay the same the w
   over YouTube's **RTMPS** ingest. You don't need a paid streaming service.
 
 ```
-Phone / browser ──HTTPS or LAN──► replay-studio-api (FastAPI + React dashboard)
+Phone / browser ──HTTPS or LAN──► replay-studio-api (Starlette + React dashboard)
                                         │  SQLite (state, stop intent, schedules, encrypted tokens)
                                         ▼
                                   replay-studio-worker ──► FFmpeg -re -stream_loop -1 ──RTMPS──► YouTube
@@ -137,7 +137,14 @@ Keep the host awake: `sudo systemctl mask sleep.target suspend.target hibernate.
 On a laptop, also set `HandleLidSwitch=ignore` in `/etc/systemd/logind.conf`.
 Put videos for the host picker in `/var/lib/replay-studio/media` (owned by `replaystudio`).
 
-## 6b. Run it on an Android phone (Redmi Note 8 Pro and other arm64 phones)
+## 6a. Android app (APK), the easiest way to use a phone as the host
+
+`android/` builds a standalone **APK**: install it, open it, and the phone streams by itself (no Termux,
+PC or root). It contains the same engine (embedded Python) plus FFmpeg for arm64, runs as a foreground
+service with wake and Wi-Fi locks, and restarts after a reboot. Install, first-run and build steps are in
+[`android/README.md`](android/README.md). The Termux route below still works if you prefer it.
+
+## 6b. Run it on an Android phone with Termux (Redmi Note 8 Pro and other arm64 phones)
 
 The phone itself becomes the streaming host. It runs Replay Studio inside **Termux**, a Linux
 environment for Android. You don't need root. You control it from Chrome on the same phone
@@ -282,7 +289,7 @@ how far viewers can seek back. Check YouTube's current help, because these limit
 
 ```bash
 . .venv/bin/activate
-pytest -q                                   # ~36 tests, ~5 minutes; needs ffmpeg
+pytest -q                                   # ~38 tests, ~5 minutes; needs ffmpeg
 pytest -q backend/tests/test_unit.py        # fast unit/API tests only
 ```
 

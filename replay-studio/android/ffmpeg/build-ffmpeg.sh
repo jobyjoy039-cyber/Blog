@@ -51,7 +51,7 @@ mkdir -p "$WORK/ffmpeg" && tar -xJf "$SRC/ffmpeg.tar.xz" -C "$WORK/ffmpeg" --str
       --disable-shared --enable-static --disable-debug --disable-doc --disable-ffplay \
       --disable-vulkan --disable-mediacodec --disable-jni --disable-indevs --enable-indev=lavfi --disable-outdevs \
       --extra-cflags="-I$DEPS/include -O2" --extra-ldflags="-L$DEPS/lib $LDEXTRA" \
-      --extra-libs="$WORK/tlsalign.o" >"$WORK/ffmpeg-configure.log"
+      --extra-ldexeflags="$WORK/tlsalign.o" >"$WORK/ffmpeg-configure.log"
   make -j"$JOBS" >"$WORK/ffmpeg-make.log" 2>&1 && make install >/dev/null )
 llvm-strip "$OUT/$VARIANT/bin/ffmpeg" "$OUT/$VARIANT/bin/ffprobe"
 ls -la "$OUT/$VARIANT/bin"
