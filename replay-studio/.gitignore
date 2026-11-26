@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+frontend/dist/
+backend/replay_studio/static/
+data/
+config.toml
+*.egg-info/
+.pytest_cache/
