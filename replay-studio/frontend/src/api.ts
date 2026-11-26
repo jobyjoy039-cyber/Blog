@@ -60,7 +60,7 @@ export type Session = {
   error: string | null; error_kind: string | null; reconnect_attempts: number; created_at: number; ended_at: number | null;
 };
 export type Status = {
-  connected: boolean; oauth_configured: boolean;
+  connected: boolean; oauth_configured: boolean; oauth_redirect_uri: string;
   channel: { id: string; title: string; handle: string; avatar: string } | null;
   session: Session | null; recent: Session[]; worker: { online: boolean; last_seen_seconds: number | null };
   timezone: string; server_time: number; encoder_mode: "transcode" | "copy";

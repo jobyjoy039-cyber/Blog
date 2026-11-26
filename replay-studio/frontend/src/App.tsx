@@ -35,25 +35,58 @@ function useToast() {
 // ------------------------------------------------------------------ login
 function Login({ onDone }: { onDone: () => void }) {
   const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [setup, setSetup] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const expired = new URLSearchParams(location.search).get("expired");
+  useEffect(() => { api<{ needs_password: boolean }>("/api/setup-status").then((r) => setSetup(r.needs_password)).catch(() => {}); }, []);
   return (
     <div className="login">
       <form className="card" onSubmit={async (e) => {
         e.preventDefault(); setBusy(true); setErr(null);
-        try { await api("/api/login", { method: "POST", json: { password: pw } }); onDone(); }
-        catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+        try {
+          if (setup) {
+            if (pw !== pw2) throw new Error("The passwords do not match.");
+            await api("/api/setup", { method: "POST", json: { password: pw } });
+          } else {
+            await api("/api/login", { method: "POST", json: { password: pw } });
+          }
+          onDone();
+        } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
       }}>
         <h1><span className="logo">⟳</span> Replay Studio</h1>
         {expired && <p className="muted">Your session expired. Log in again.</p>}
-        <label>Dashboard password
-          <input type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
+        {setup && <p className="muted">Welcome! Create a dashboard password (at least 10 characters). You will use it to control the stream from this phone or another device.</p>}
+        <label>{setup ? "New password" : "Dashboard password"}
+          <input type="password" autoComplete={setup ? "new-password" : "current-password"} value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
         </label>
+        {setup && <label>Repeat password<input type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></label>}
         {err && <p className="error">{err}</p>}
-        <button className="primary" disabled={busy || !pw}>Log in</button>
+        <button className="primary" disabled={busy || !pw || (setup && pw.length < 10)}>{setup ? "Create password" : "Log in"}</button>
       </form>
     </div>
+  );
+}
+
+function GoogleSetup({ st, onSaved }: { st: Status; onSaved: () => void }) {
+  const [id, setId] = useState("");
+  const [secret, setSecret] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  return (
+    <form className="setupbox" onSubmit={async (e) => {
+      e.preventDefault(); setErr(null);
+      try { await api("/api/settings/google", { method: "PUT", json: { client_id: id.trim(), client_secret: secret.trim() } }); onSaved(); }
+      catch (e) { setErr((e as Error).message); }
+    }}>
+      <p className="small">One-time setup: create a Google OAuth client (type <b>Web application</b>) in Google Cloud Console with the YouTube Data API v3 enabled. Add this exact <b>Authorized redirect URI</b>:</p>
+      <code className="block">{st.oauth_redirect_uri}</code>
+      <label>Client ID<input value={id} onChange={(e) => setId(e.target.value)} placeholder="…apps.googleusercontent.com" autoCapitalize="off" autoCorrect="off" /></label>
+      <label>Client secret<input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="off" /></label>
+      {err && <p className="error">{err}</p>}
+      <button disabled={!id || !secret}>Save Google client</button>
+      <p className="muted small">Stored encrypted on this device. See README → “Google Cloud OAuth”.</p>
+    </form>
   );
 }
 
@@ -158,12 +191,13 @@ function LivePanel({ s, tz, now, toast, onChange }: { s: Session; tz: string; no
 
 // ------------------------------------------------------------------ YouTube account
 function Account({ st, toast, refresh }: { st: Status; toast: (m: string) => void; refresh: () => void }) {
+  const [waiting, setWaiting] = useState(false);
   const [url, setUrl] = useState("");
   const [result, setResult] = useState<{ matches: boolean; value: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const connect = async () => {
     setErr(null);
-    try { const { url } = await api<{ url: string }>("/api/youtube/connect"); location.href = url; }
+    try { const { url } = await api<{ url: string }>("/api/youtube/connect"); setWaiting(true); location.href = url; }
     catch (e) { setErr((e as Error).message); }
   };
   if (!st.connected || !st.channel) {
@@ -171,9 +205,10 @@ function Account({ st, toast, refresh }: { st: Status; toast: (m: string) => voi
       <section className="card">
         <h2>1 · Connect YouTube</h2>
         <p className="muted">Sign in with the Google account that owns your channel. Tokens stay on the host.</p>
-        {!st.oauth_configured && <p className="warnbox">Google OAuth is not configured on the host yet. See README → “Google Cloud OAuth”.</p>}
+        {!st.oauth_configured && <GoogleSetup st={st} onSaved={refresh} />}
         {err && <p className="error">{err}</p>}
         <button className="primary" onClick={connect} disabled={!st.oauth_configured}>Connect YouTube account</button>
+        {waiting && <p className="muted small">Finish signing in with Google in your browser, then come back here. This page updates automatically.</p>}
       </section>
     );
   }

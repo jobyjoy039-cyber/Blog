@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
+from starlette.testclient import TestClient
 
 from av_analysis import make_test_source
 from replay_studio.api import create_app
@@ -239,3 +239,41 @@ def test_copy_mode_command_does_not_encode_video(tmp_path):
 def test_font_autodetect_returns_existing_or_android_default():
     cfg = Config()
     assert cfg.font_path.endswith(".ttf")
+
+
+def test_first_run_setup_only_from_the_device(tmp_path):
+    cfg = Config()
+    cfg.paths.data_dir = str(tmp_path / "data")
+    cfg.paths.media_dir = str(tmp_path / "media")
+    app = create_app(cfg)
+    remote = TestClient(app, client=("192.168.1.50", 5000))
+    assert remote.get("/api/setup-status").json() == {"needs_password": True}
+    r = remote.post("/api/setup", json={"password": "long-enough-pw"}, headers={"X-Replay-Studio": "1"})
+    assert r.status_code == 403
+    local = TestClient(app, client=("127.0.0.1", 5000))
+    assert local.post("/api/setup", json={"password": "short"}).status_code == 422
+    assert local.post("/api/setup", json={"password": "long-enough-pw"}).status_code == 200
+    assert local.get("/api/status").status_code == 200            # logged in by setup
+    assert local.post("/api/setup", json={"password": "another-password"}).status_code == 409
+
+
+def test_google_client_from_dashboard_and_cookieless_callback(app_client):
+    c, cfg, app = app_client
+    login(c)
+    assert c.put("/api/settings/google", json={"client_id": "abc", "client_secret": "x"}).status_code == 422
+    assert c.put("/api/settings/google", json={"client_id": "not-a-google-client-id",
+                                               "client_secret": "GOCSPX-abcdef"}).status_code == 400
+    r = c.put("/api/settings/google", json={"client_id": "123-abc.apps.googleusercontent.com",
+                                           "client_secret": "GOCSPX-abcdef"})
+    assert r.status_code == 200 and r.json()["redirect_uri"].endswith("/api/youtube/callback")
+    st = c.get("/api/status").json()
+    assert st["oauth_configured"]
+    assert "GOCSPX-abcdef" not in c.get("/api/diagnostics").text
+    assert app.state.db.get_secret("google_client_secret") != "GOCSPX-abcdef"   # stored encrypted
+    url = c.get("/api/youtube/connect").json()["url"]
+    assert "client_id=123-abc.apps.googleusercontent.com" in url
+    # Chrome (no dashboard cookie) returns with a forged state: rejected with a readable page, nothing saved
+    chrome = TestClient(app)
+    r = chrome.get("/api/youtube/callback", params={"code": "x", "state": "forged"}, follow_redirects=False)
+    assert r.status_code == 400 and "connection failed" in r.text
+    assert not app.state.yt.connected()

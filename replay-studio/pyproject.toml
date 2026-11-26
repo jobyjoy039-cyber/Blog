@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "Loop a local video into a single YouTube live broadcast until you press Stop."
 requires-python = ">=3.11"
 dependencies = [
-  "fastapi>=0.115,<0.116",
+  "starlette>=0.40",
   "uvicorn>=0.30",              # plain uvicorn: no Rust/C extras, installs on Android (Termux)
   "httpx>=0.27",
   "python-multipart>=0.0.9",
@@ -13,7 +13,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8", "pytest-asyncio>=0.23"]
+# fastapi is only used by the test/demo fake YouTube server, never by the app itself.
+test = ["pytest>=8", "pytest-asyncio>=0.23", "fastapi>=0.115"]
 
 [project.scripts]
 replay-studio = "replay_studio.cli:main"

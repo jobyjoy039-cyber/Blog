@@ -580,8 +580,9 @@ class Worker:
 
         def _term(signum, frame):
             self.shutting_down = True
-        signal.signal(signal.SIGTERM, _term)
-        signal.signal(signal.SIGINT, _term)
+        if threading.current_thread() is threading.main_thread():  # not in the Android app's thread
+            signal.signal(signal.SIGTERM, _term)
+            signal.signal(signal.SIGINT, _term)
         while not self.shutting_down:
             try:
                 self.tick()

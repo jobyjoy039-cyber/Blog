@@ -88,3 +88,5 @@ p.ok { background: color-mix(in srgb, var(--ok) 12%, transparent); padding: 8px 
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(100px + env(safe-area-inset-bottom)); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-size: .9rem; z-index: 20; max-width: calc(100% - 32px); }
 code { font-size: .85em; overflow-wrap: anywhere; }
 @media (max-width: 480px) { .row:not(.between) { flex-wrap: wrap; } }
+.setupbox { border: 1px dashed var(--line); border-radius: 10px; padding: 12px; margin: 10px 0; }
+code.block { display: block; background: var(--bg); padding: 8px 10px; border-radius: 6px; margin: 6px 0 12px; user-select: all; }

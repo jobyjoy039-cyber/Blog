@@ -1,4 +1,4 @@
-"""Dashboard HTTP API (FastAPI). The stream itself runs in the separate worker service."""
+"""Dashboard HTTP API (Starlette via .web). The stream itself runs in the separate worker service."""
 from __future__ import annotations
 
 import json
@@ -17,10 +17,10 @@ from pathlib import Path
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, field_validator
+from starlette.responses import HTMLResponse
+
+from .web import (App, F, FileResponse, HTTPException, JSONResponse, Model, RedirectResponse, Request, Response,
+                  StaticFiles)
 
 from . import db as S
 from . import media as M
@@ -46,65 +46,80 @@ STATE_LABELS = {
 TITLE_BAD = re.compile(r"[<>]")
 
 
-class LoginBody(BaseModel):
+class LoginBody(Model):
     password: str
 
 
-class ChannelBody(BaseModel):
+class ChannelBody(Model):
     url: str
 
 
-class ImportBody(BaseModel):
+class ImportBody(Model):
     path: str
 
 
-class UploadCreate(BaseModel):
-    filename: str = Field(min_length=1, max_length=255)
-    size: int = Field(gt=0)
+class UploadCreate(Model):
+    filename: str = F(min_length=1, max_length=255)
+    size: int = F(gt=0)
 
 
-class OverlayBody(BaseModel):
+class OverlayBody(Model):
     enabled: bool = False
-    text: str = Field("Enjoying the stream? Subscribe!", max_length=120)
-    every_minutes: float = Field(10, ge=1, le=1440)
-    show_seconds: float = Field(8, ge=2, le=600)
+    text: str = F("Enjoying the stream? Subscribe!", max_length=120)
+    every_minutes: float = F(10, ge=1, le=1440)
+    show_seconds: float = F(8, ge=2, le=600)
     position: Literal["top", "bottom"] = "bottom"
 
 
-class SessionCreate(BaseModel):
+class SessionCreate(Model):
     media_id: str
-    title: str = Field(min_length=1, max_length=100)
-    description: str = Field(DEFAULT_DESCRIPTION, max_length=5000)
+    title: str = F(min_length=1, max_length=100)
+    description: str = F(DEFAULT_DESCRIPTION, max_length=5000)
     privacy: Literal["private", "unlisted", "public"] = "unlisted"
     made_for_kids: bool
     confirm_rights: bool = False
     confirm_public: bool = False
     scheduled_start: str | None = None   # ISO 8601; naive values are read in the UI time zone
-    idempotency_key: str | None = Field(None, max_length=80)
+    idempotency_key: str | None = F(None, max_length=80)
     overlay: OverlayBody | None = None
 
-    @field_validator("title", "description")
-    @classmethod
-    def no_angle_brackets(cls, v: str) -> str:
-        if TITLE_BAD.search(v):
+    def validate(self) -> None:
+        if TITLE_BAD.search(self.title) or TITLE_BAD.search(self.description):
             raise ValueError("YouTube does not allow < or > in titles and descriptions")
-        return v
 
 
-class ChatBody(BaseModel):
-    messages: list[str] = Field(default_factory=list, max_length=50)
+class SetupBody(Model):
+    password: str = F(min_length=10, max_length=200)
 
 
-def create_app(cfg: Config | None = None, yt: YouTubeClient | None = None) -> FastAPI:
+class GoogleBody(Model):
+    client_id: str = F(min_length=10, max_length=300)
+    client_secret: str = F(min_length=6, max_length=300)
+
+
+class ChatBody(Model):
+    messages: list[str] = F(default_factory=list, max_length=50)
+
+
+def create_app(cfg: Config | None = None, yt: YouTubeClient | None = None) -> App:
     cfg = cfg or load_config()
     cfg.ensure_dirs()
     db = DB(cfg.db_path)
     box = SecretBox(cfg.data_dir)
     yt = yt or YouTubeClient(cfg, db, box)
-    app = FastAPI(title="Replay Studio", docs_url=None, redoc_url=None, openapi_url=None)
+    app = App()
     app.state.cfg, app.state.db, app.state.yt = cfg, db, yt
     failures: dict[str, list[float]] = {}
     upload_locks: dict[str, threading.Lock] = {}
+
+    # Google OAuth client can be entered in the dashboard (needed in the Android app, handy on Linux).
+    def apply_google_settings() -> None:
+        g = db.get_setting("google_client")
+        ct = db.get_secret("google_client_secret")
+        if g and ct:
+            cfg.google.client_id = g["client_id"]
+            cfg.google.client_secret = box.decrypt(ct)
+    apply_google_settings()
 
     # ------------------------------------------------------------ auth
     def password_hash() -> str | None:
@@ -116,10 +131,12 @@ def create_app(cfg: Config | None = None, yt: YouTubeClient | None = None) -> Fa
     @app.middleware("http")
     async def guard(request: Request, call_next):
         path = request.url.path
-        if path.startswith("/api/") and path not in ("/api/login", "/api/health"):
+        # /api/youtube/callback is checked by its one-time OAuth `state` instead of the cookie: on Android the
+        # Google sign-in has to happen in Chrome (Google blocks sign-in inside app WebViews), and Chrome does
+        # not share the app's login cookie.
+        if path.startswith("/api/") and path not in ("/api/login", "/api/health", "/api/setup",
+                                                     "/api/setup-status", "/api/youtube/callback"):
             if not box.check_session(request.cookies.get(COOKIE), pw_version()):
-                if path == "/api/youtube/callback":
-                    return RedirectResponse("/?error=login_required")
                 return JSONResponse({"detail": "Your dashboard session has expired. Please log in again.",
                                      "code": "auth_required"}, status_code=401)
             if request.method not in ("GET", "HEAD", "OPTIONS") and request.headers.get(CSRF_HEADER) != "1":
@@ -146,6 +163,26 @@ def create_app(cfg: Config | None = None, yt: YouTubeClient | None = None) -> Fa
     def health():
         return {"ok": True}
 
+    def is_local(request: Request) -> bool:
+        return (request.client.host if request.client else "") in ("127.0.0.1", "::1", "localhost")
+
+    @app.get("/api/setup-status")
+    def setup_status():
+        return {"needs_password": not password_hash()}
+
+    @app.post("/api/setup")
+    def setup(body: SetupBody, request: Request, response: Response):
+        """First run without a command line (Android app): set the password from the device itself."""
+        if password_hash():
+            raise HTTPException(409, "A password is already set.")
+        if not is_local(request):
+            raise HTTPException(403, "Set the first password on the host device itself.")
+        db.set_setting("password_hash", hash_password(body.password))
+        token = box.make_session(cfg.server.session_hours, pw_version())
+        response.set_cookie(COOKIE, token, max_age=cfg.server.session_hours * 3600, httponly=True,
+                            samesite="lax", secure=cfg.server.secure_cookies, path="/")
+        return {"ok": True}
+
     @app.post("/api/login")
     def login(body: LoginBody, request: Request, response: Response):
         ip = request.client.host if request.client else "?"
@@ -155,7 +192,8 @@ def create_app(cfg: Config | None = None, yt: YouTubeClient | None = None) -> Fa
             raise HTTPException(429, "Too many failed attempts. Wait 5 minutes.")
         stored = password_hash()
         if not stored:
-            raise HTTPException(503, "No dashboard password is set. On the host run: replay-studio set-password")
+            raise HTTPException(503, "No dashboard password is set yet. Open the dashboard on the host device "
+                                     "itself to create one (or run: replay-studio set-password).")
         if not verify_password(body.password, stored):
             failures[ip].append(time.time())
             time.sleep(0.5)
@@ -213,6 +251,7 @@ def create_app(cfg: Config | None = None, yt: YouTubeClient | None = None) -> Fa
         return {
             "connected": yt.connected(), "channel": channel,
             "oauth_configured": bool(cfg.google.client_id and cfg.google.client_secret),
+            "oauth_redirect_uri": cfg.oauth_redirect_uri,
             "session": view(db.active_session()),
             "recent": [view(s) for s in db.recent_sessions(10)],
             "worker": worker_status(), "timezone": cfg.ui.timezone, "server_time": time.time(),
@@ -232,21 +271,45 @@ def create_app(cfg: Config | None = None, yt: YouTubeClient | None = None) -> Fa
     @app.get("/api/youtube/connect")
     def yt_connect():
         if not (cfg.google.client_id and cfg.google.client_secret):
-            raise HTTPException(400, "Google OAuth is not configured. Add client_id and client_secret to config.toml "
-                                     "(see README: Google Cloud OAuth).")
+            raise HTTPException(400, "Google OAuth is not configured. Enter the client ID and secret in the dashboard "
+                                     "or config.toml (see README: Google Cloud OAuth).")
         return {"url": yt.auth_url()}
 
+    @app.put("/api/settings/google")
+    def google_save(body: GoogleBody):
+        if db.active_session():
+            raise HTTPException(409, "Stop the active stream before changing the Google OAuth client.")
+        if not body.client_id.strip().endswith(".apps.googleusercontent.com"):
+            raise HTTPException(400, "The client ID should end with .apps.googleusercontent.com")
+        db.set_setting("google_client", {"client_id": body.client_id.strip()})
+        db.put_secret("google_client_secret", box.encrypt(body.client_secret.strip()))
+        apply_google_settings()
+        return {"ok": True, "redirect_uri": cfg.oauth_redirect_uri}
+
+    def callback_page(ok: bool, message: str, request: Request):
+        """Plain page for the OAuth return. In the app's own browser it bounces back to the dashboard."""
+        import html
+        same_browser = box.check_session(request.cookies.get(COOKIE), pw_version())
+        if same_browser:
+            return RedirectResponse("/?connected=1" if ok else "/?error=" + re.sub(r"[^A-Za-z_ ]", "", message)[:60])
+        title = "YouTube connected" if ok else "YouTube connection failed"
+        body = (f"<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'><title>{title}</title>"
+                f"<body style='font:18px system-ui;padding:24px;max-width:520px;margin:auto'>"
+                f"<h2>{'✅' if ok else '⚠️'} {title}</h2><p>{html.escape(message)}</p>"
+                f"<p>Switch back to <b>Replay Studio</b>. This tab can be closed.</p></body>")
+        return HTMLResponse(body, status_code=200 if ok else 400)
+
     @app.get("/api/youtube/callback")
-    def yt_callback(code: str = "", state: str = "", error: str = ""):
+    def yt_callback(request: Request, code: str = "", state: str = "", error: str = ""):
         if error:
-            return RedirectResponse(f"/?error=oauth_{re.sub(r'[^a-z_]', '', error.lower())[:40]}")
+            return callback_page(False, f"Google returned: {error[:60]}", request)
         try:
-            yt.exchange_code(code, state)
-            yt.my_channel()
+            yt.exchange_code(code, state)       # the one-time state proves this flow was started from the dashboard
+            ch = yt.my_channel()
         except YouTubeError as e:
             log.warning("OAuth callback failed: %s", e.friendly)
-            return RedirectResponse("/?error=" + re.sub(r"[^A-Za-z_]", "", e.reason)[:40])
-        return RedirectResponse("/?connected=1")
+            return callback_page(False, e.friendly, request)
+        return callback_page(True, f"Channel: {ch.get('title', '')}", request)
 
     @app.post("/api/youtube/disconnect")
     def yt_disconnect():
@@ -600,7 +663,7 @@ def create_app(cfg: Config | None = None, yt: YouTubeClient | None = None) -> Fa
         app.mount("/assets", StaticFiles(directory=static_dir / "assets"), name="assets")
 
         @app.get("/{full_path:path}")
-        def spa(full_path: str):
+        def spa(full_path: str = ""):
             if full_path.startswith("api/"):
                 raise HTTPException(404)
             f = (static_dir / full_path).resolve()
