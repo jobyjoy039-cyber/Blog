@@ -61,9 +61,14 @@ class EncoderConfig:
     audio_sample_rate: int = 44100
     keyframe_seconds: int = 2
     x264_preset: str = "veryfast"
+    # "transcode": encode video live (supports the subscribe overlay). "copy": video is encoded to the stream
+    # spec once when a file is added, and the live process only copies it (very low CPU: phones, Raspberry Pi).
+    mode: str = "transcode"
+    # x264 preset for the one-time preparation in copy mode (slower = better quality, longer import).
+    prepare_preset: str = "veryfast"
     # "rtmps" (production) or "rtmp" (local test ingest only).
     ingest_protocol: str = "rtmps"
-    font_file: str = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    font_file: str = ""  # empty = auto-detect (DejaVu on Linux, Termux fonts, or Android's Roboto)
 
 
 @dataclass
@@ -103,6 +108,23 @@ class Config:
     @property
     def media_dir(self) -> Path:
         return Path(self.paths.media_dir).expanduser().resolve()
+
+    @property
+    def is_termux(self) -> bool:
+        return "com.termux" in os.environ.get("PREFIX", "")
+
+    @property
+    def font_path(self) -> str:
+        if self.encoder.font_file:
+            return self.encoder.font_file
+        prefix = os.environ.get("PREFIX", "/usr")
+        for cand in ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                     f"{prefix}/share/fonts/TTF/DejaVuSans-Bold.ttf",
+                     "/system/fonts/Roboto-Bold.ttf", "/system/fonts/Roboto-Regular.ttf",
+                     "/system/fonts/DroidSans-Bold.ttf"):
+            if Path(cand).exists():
+                return cand
+        return "/system/fonts/Roboto-Regular.ttf"
 
     @property
     def library_dir(self) -> Path:

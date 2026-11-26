@@ -137,6 +137,74 @@ Keep the host awake: `sudo systemctl mask sleep.target suspend.target hibernate.
 On a laptop, also set `HandleLidSwitch=ignore` in `/etc/systemd/logind.conf`.
 Put videos for the host picker in `/var/lib/replay-studio/media` (owned by `replaystudio`).
 
+## 6b. Run it on an Android phone (Redmi Note 8 Pro and other arm64 phones)
+
+The phone itself becomes the streaming host. It runs Replay Studio inside **Termux**, a Linux
+environment for Android. You don't need root. You control it from Chrome on the same phone
+(`http://localhost:8787`) or from a computer on the same Wi-Fi.
+
+**What the phone must do for the whole stream:** stay powered on, charging, and connected to the internet
+(Wi-Fi or mobile data). The screen can be off and locked, and you can close Chrome. Turning off Wi-Fi
+*and* mobile data stops the stream. If the network switches (Wi-Fi ↔ mobile data), the dashboard shows
+**Reconnecting** and the stream returns to the same broadcast.
+
+**Low-power mode.** `config.android.toml` sets `encoder.mode = "copy"`. When you add a video, it's encoded
+once to YouTube's 720p30 spec. That takes roughly as long as the video, or longer on a phone. After that,
+streaming only copies the video and encodes the audio. Measured CPU use is about 11× lower than live
+encoding (5% vs 55% of a core on the test machine). This keeps the Helio G90T cool and avoids thermal
+throttling. The subscribe overlay isn't available in this mode.
+
+### Install
+
+1. Install **Termux**, **Termux:API** and **Termux:Boot** from **F-Droid** (<https://f-droid.org>). Don't
+   use the Play Store version of Termux, which is outdated. Open Termux:Boot once.
+2. In Termux:
+   ```bash
+   pkg install -y git
+   git clone <this repository URL> && cd <repo>/replay-studio
+   bash scripts/termux-install.sh       # 10-30 min the first time; allow the storage permission popup
+   nano config.toml                     # paste Google client_id / client_secret (section 4)
+   bash scripts/termux-start.sh
+   ```
+3. In Google Cloud, the OAuth redirect URI is `http://localhost:8787/api/youtube/callback`. Open
+   `http://localhost:8787` in **Chrome on the phone**, log in, and connect YouTube there. Google only
+   allows `http://` redirects for `localhost`, so do the Connect step on the phone itself. After that you
+   can also control it from a computer at `http://<phone-Wi-Fi-IP>:8787`.
+4. Put your video in the phone's **Movies** folder. Then use **Choose from host media folder**, which
+   avoids a second copy. Or use **Upload video from this device**.
+5. Run `replay-studio check` (with `. .venv/bin/activate`). It must say `RTMPS : supported`. If Termux's
+   FFmpeg ever lacks RTMPS, run `pkg upgrade ffmpeg`.
+
+### Keep MIUI from killing it (important on Xiaomi/Redmi)
+
+* Settings → Apps → Manage apps → **Termux** → **Autostart: on**, **Battery saver: No restrictions**.
+  Do the same for **Termux:API** and **Termux:Boot**.
+* Open recent apps, then long-press (or pull down) the Termux card → **Lock**.
+* Settings → Battery & performance → turn **Battery saver** and **Ultra battery saver** off.
+* `termux-start.sh` takes a **wake lock**, shown as "wake lock held" in the Termux notification. Leave that
+  notification alone.
+* Termux:Boot restarts the services after a phone reboot. A live session then resumes into the **same**
+  broadcast, and a stopped one never restarts.
+* The Redmi Note 8 Pro's official updates end at Android 11, so Android 12's "phantom process killer"
+  doesn't apply. On a custom Android 12+ ROM, disable it once over adb:
+  `adb shell device_config put activity_manager max_phantom_processes 2147483647`.
+
+### Day-to-day
+
+```bash
+bash scripts/termux-start.sh     # start services (idempotent)
+bash scripts/termux-stop.sh      # stop services (does NOT end the broadcast; use Stop stream for that)
+tail -f ~/replay-studio-data/logs/worker.log
+```
+
+Practical tips:
+* Keep the phone on a charger, out of its case, somewhere cool.
+* Mobile data: 720p at 3 Mbps uses about **1.4 GB per hour** (≈ 33 GB per day). Prefer Wi-Fi.
+* If YouTube Studio reports low bitrate, lower `video_bitrate_k`. YouTube's 720p30 minimum is 3000; for a
+  weak connection use `width = 854`, `height = 480`, `video_bitrate_k = 1500`. Then tap
+  **Prepare again** on the video so it's re-encoded with the new settings.
+* Charging 24/7 wears the battery. Unplugging now and then while streaming is fine.
+
 ## 7. Accessing the dashboard
 
 **On your local network (simplest).** Keep `host = "0.0.0.0"` and open `http://<host-LAN-IP>:8787` on
@@ -214,7 +282,7 @@ how far viewers can seek back. Check YouTube's current help, because these limit
 
 ```bash
 . .venv/bin/activate
-pytest -q                                   # ~31 tests, ~3.5 minutes; needs ffmpeg
+pytest -q                                   # ~36 tests, ~5 minutes; needs ffmpeg
 pytest -q backend/tests/test_unit.py        # fast unit/API tests only
 ```
 
@@ -248,6 +316,8 @@ These need your Google account, so they can't be automated here. Use **Unlisted*
 
 ## 14. Limitations
 
+* In low-power `copy` mode (the Android default) there is no subscribe overlay, and changing resolution or bitrate requires **Prepare again** on the video.
+* The Android/Termux setup was tested by simulating its scripts on Linux; it has not been run on a physical Redmi yet.
 * Overlay changes apply when the next stream starts. The running encoder isn't restarted for cosmetic
   changes.
 * Reconnecting after an outage briefly interrupts ingest (as with any encoder). YouTube keeps the event

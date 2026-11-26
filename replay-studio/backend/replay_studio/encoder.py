@@ -57,18 +57,28 @@ def overlay_filter(cfg: Config, ov: Overlay, textfile: Path) -> str:
     enable = f"lt(mod(t,{period:.0f}),{ov.show_seconds:.0f})"
     y_box = "ih*0.06" if ov.position == "top" else "ih*0.80"
     y_txt = "h*0.06+(h*0.14-text_h)/2" if ov.position == "top" else "h*0.80+(h*0.14-text_h)/2"
-    font = filter_escape(cfg.encoder.font_file)
+    font = filter_escape(cfg.font_path)
     tf = filter_escape(str(textfile))
     return (f"drawbox=x=iw*0.1:y={y_box}:w=iw*0.8:h=ih*0.14:color=0xCC0000@0.85:t=fill:enable='{enable}',"
             f"drawtext=fontfile={font}:textfile={tf}:fontcolor=white:fontsize=h*0.055:"
             f"x=(w-text_w)/2:y={y_txt}:enable='{enable}'")
 
 
+def video_encode_args(cfg: Config, preset: str) -> list[str]:
+    """H.264 settings that follow YouTube's ingest recommendations: CBR, 2 s keyframes, high profile."""
+    e = cfg.encoder
+    gop = e.fps * e.keyframe_seconds
+    return ["-c:v", "libx264", "-preset", preset, "-profile:v", "high", "-pix_fmt", "yuv420p",
+            "-b:v", f"{e.video_bitrate_k}k", "-minrate", f"{e.video_bitrate_k}k",
+            "-maxrate", f"{e.video_bitrate_k}k", "-bufsize", f"{e.video_bitrate_k * 2}k",
+            "-x264-params", "nal-hrd=cbr:force-cfr=1",
+            "-g", str(gop), "-keyint_min", str(gop), "-sc_threshold", "0"]
+
+
 def build_command(cfg: Config, input_path: Path, output_url: str, has_audio: bool, start_at: float = 0.0,
                   overlay: Overlay | None = None, overlay_textfile: Path | None = None,
                   output_format: str = "flv") -> list[str]:
     e = cfg.encoder
-    gop = e.fps * e.keyframe_seconds
     argv = [e.ffmpeg, "-hide_banner", "-nostdin", "-loglevel", "warning",
             "-progress", "pipe:1", "-stats_period", "1"]
     if start_at > 0.01:
@@ -78,20 +88,20 @@ def build_command(cfg: Config, input_path: Path, output_url: str, has_audio: boo
     argv += ["-re", "-stream_loop", "-1", "-fflags", "+genpts", "-i", str(input_path.resolve())]
     if not has_audio:
         argv += ["-f", "lavfi", "-i", f"anullsrc=channel_layout=stereo:sample_rate={e.audio_sample_rate}"]
-    vchain = (f"[0:v:0]scale={e.width}:{e.height}:force_original_aspect_ratio=decrease,"
-              f"pad={e.width}:{e.height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={e.fps}")
-    if overlay and overlay.enabled and overlay_textfile:
-        vchain += "," + overlay_filter(cfg, overlay, overlay_textfile)
-    vchain += ",format=yuv420p[v]"
     asrc = "[0:a:0]" if has_audio else "[1:a:0]"
     achain = f"{asrc}aresample={e.audio_sample_rate}:async=1000,aformat=channel_layouts=stereo[a]"
-    argv += ["-filter_complex", f"{vchain};{achain}", "-map", "[v]", "-map", "[a]"]
-    argv += ["-c:v", "libx264", "-preset", e.x264_preset, "-profile:v", "high", "-pix_fmt", "yuv420p",
-             "-b:v", f"{e.video_bitrate_k}k", "-minrate", f"{e.video_bitrate_k}k",
-             "-maxrate", f"{e.video_bitrate_k}k", "-bufsize", f"{e.video_bitrate_k * 2}k",
-             "-x264-params", "nal-hrd=cbr:force-cfr=1",
-             "-g", str(gop), "-keyint_min", str(gop), "-sc_threshold", "0", "-r", str(e.fps),
-             "-c:a", "aac", "-b:a", f"{e.audio_bitrate_k}k", "-ar", str(e.audio_sample_rate), "-ac", "2"]
+    if e.mode == "copy":
+        # Video was already encoded to the ingest spec (720p30, CBR, 2 s keyframes) when the file was added.
+        argv += ["-filter_complex", achain, "-map", "0:v:0", "-map", "[a]", "-c:v", "copy"]
+    else:
+        vchain = (f"[0:v:0]scale={e.width}:{e.height}:force_original_aspect_ratio=decrease,"
+                  f"pad={e.width}:{e.height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={e.fps}")
+        if overlay and overlay.enabled and overlay_textfile:
+            vchain += "," + overlay_filter(cfg, overlay, overlay_textfile)
+        vchain += ",format=yuv420p[v]"
+        argv += ["-filter_complex", f"{vchain};{achain}", "-map", "[v]", "-map", "[a]"]
+        argv += video_encode_args(cfg, e.x264_preset) + ["-r", str(e.fps)]
+    argv += ["-c:a", "aac", "-b:a", f"{e.audio_bitrate_k}k", "-ar", str(e.audio_sample_rate), "-ac", "2"]
     if output_format == "flv":
         argv += ["-f", "flv", "-flvflags", "no_duration_filesize", output_url]
     else:
@@ -101,11 +111,13 @@ def build_command(cfg: Config, input_path: Path, output_url: str, has_audio: boo
 
 def _set_pdeathsig() -> None:  # pragma: no cover - runs in child
     """Make FFmpeg die if the worker dies, so a restarted worker never doubles the ingest."""
-    try:
-        libc = ctypes.CDLL("libc.so.6", use_errno=True)
-        libc.prctl(1, signal.SIGTERM)  # PR_SET_PDEATHSIG
-    except OSError:
-        pass
+    for name in ("libc.so.6", "libc.so"):  # glibc (Linux), bionic (Android/Termux)
+        try:
+            libc = ctypes.CDLL(name, use_errno=True)
+            libc.prctl(1, signal.SIGTERM)  # PR_SET_PDEATHSIG
+            return
+        except (OSError, AttributeError):
+            continue
 
 
 @dataclass

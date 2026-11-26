@@ -53,7 +53,7 @@ def ffmpeg_loop_pids() -> list[int]:
 
 
 class Stack:
-    def __init__(self, tmp: Path, extra_cfg: str = ""):
+    def __init__(self, tmp: Path, extra_cfg: str = "", extra_env: dict | None = None):
         self.tmp = tmp
         self.api_port, self.fake_port, self.rtmp_port = free_port(), free_port(), free_port()
         (tmp / "media").mkdir()
@@ -90,7 +90,8 @@ end_retry_max_seconds = 2
 scheduled_lead_seconds = 55
 {extra_cfg}
 """)
-        self.env = {**os.environ, "REPLAY_STUDIO_CONFIG": str(self.config), "PYTHONUNBUFFERED": "1"}
+        self.env = {**os.environ, "REPLAY_STUDIO_CONFIG": str(self.config), "PYTHONUNBUFFERED": "1",
+                    **(extra_env or {})}
         self.procs: dict[str, subprocess.Popen] = {}
         self.logs = tmp / "logs"
         self.logs.mkdir()
@@ -215,10 +216,10 @@ def test_video(tmp_path_factory) -> Path:
 def stack_factory(tmp_path):
     stacks = []
 
-    def make(extra_cfg: str = "") -> Stack:
+    def make(extra_cfg: str = "", extra_env: dict | None = None) -> Stack:
         d = tmp_path / f"stack{len(stacks)}"
         d.mkdir()
-        st = Stack(d, extra_cfg)
+        st = Stack(d, extra_cfg, extra_env)
         stacks.append(st)
         subprocess.run([sys.executable, "-m", "replay_studio", "set-password", "--password", PASSWORD],
                        env=st.env, check=True, capture_output=True)

@@ -63,5 +63,5 @@ export type Status = {
   connected: boolean; oauth_configured: boolean;
   channel: { id: string; title: string; handle: string; avatar: string } | null;
   session: Session | null; recent: Session[]; worker: { online: boolean; last_seen_seconds: number | null };
-  timezone: string; server_time: number;
+  timezone: string; server_time: number; encoder_mode: "transcode" | "copy";
 };

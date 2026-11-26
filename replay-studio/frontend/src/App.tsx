@@ -288,6 +288,7 @@ function Library({ selected, setSelected, toast }: { selected: string | null; se
             <dt>Loop-ready copy</dt><dd>{sel.probe.loop_ready?.video ?? "—"}; audio aligned to the exact video length</dd>
             {sel.probe.issues.length > 0 && <><dt>Fixed for looping</dt><dd>{sel.probe.issues.join("; ")}</dd></>}
           </dl>
+          {!sel.in_use && <button className="link" onClick={async () => { await api(`/api/media/${sel.id}/reprobe`, { method: "POST" }); load(); }}>Prepare again</button>}{" "}
           {!sel.in_use && <button className="link danger" onClick={async () => { await api(`/api/media/${sel.id}`, { method: "DELETE" }); setSelected(null); load(); }}>Remove from library</button>}
         </div>
       )}
@@ -354,7 +355,7 @@ function StreamForm({ st, mediaId, toast, onStarted }: { st: Status; mediaId: st
       await api("/api/sessions", { method: "POST", json: {
         media_id: mediaId, title, description: desc, privacy, made_for_kids: kids === "yes",
         confirm_rights: rights, confirm_public: publicOk, scheduled_start: mode === "schedule" ? when : null,
-        idempotency_key: idem.current, overlay: ov,
+        idempotency_key: idem.current, overlay: st.encoder_mode === "copy" ? { ...ov, enabled: false } : ov,
       } });
       toast(mode === "now" ? "Starting stream…" : "Stream scheduled");
       idem.current = crypto.randomUUID ? crypto.randomUUID() : String(Math.random());
@@ -398,7 +399,9 @@ function StreamForm({ st, mediaId, toast, onStarted }: { st: Status; mediaId: st
         )}
         <p className="muted small">The stream repeats the video in one broadcast until you press Stop stream. No time or loop limit.</p>
       </fieldset>
-      <OverlayEditor ov={ov} setOv={setOv} mediaId={mediaId} />
+      {st.encoder_mode === "copy"
+        ? <p className="muted small">Low-power (copy) mode: the subscribe overlay is not available because the video is not re-encoded live.</p>
+        : <OverlayEditor ov={ov} setOv={setOv} mediaId={mediaId} />}
       {err && <p className="error">{err}</p>}
       {!st.worker.online && <p className="warnbox">The stream worker service is not running on the host. Start it: <code>sudo systemctl start replay-studio-worker</code></p>}
       <button className="primary big" disabled={!ready || busy}>{mode === "now" ? "▶ Start stream" : "Schedule stream"}</button>

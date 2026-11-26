@@ -226,3 +226,16 @@ def test_diagnostics_hide_secrets(app_client):
     login(c)
     body = c.get("/api/diagnostics").text
     assert "GOCSPX-very-secret" not in body
+
+
+def test_copy_mode_command_does_not_encode_video(tmp_path):
+    cfg = Config()
+    cfg.encoder.mode = "copy"
+    argv = build_command(cfg, tmp_path / "a.mov", "rtmps://h/live2/k", True, 3.0)
+    assert argv[argv.index("-c:v") + 1] == "copy" and "libx264" not in argv
+    assert argv[argv.index("-c:a") + 1] == "aac" and "-stream_loop" in argv
+
+
+def test_font_autodetect_returns_existing_or_android_default():
+    cfg = Config()
+    assert cfg.font_path.endswith(".ttf")

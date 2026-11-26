@@ -1,0 +1,48 @@
+# Replay Studio on an Android phone (Termux). Installed to ~/replay-studio/config.toml by
+# scripts/termux-install.sh. The phone itself is the streaming host.
+
+[server]
+host = "0.0.0.0"                 # "127.0.0.1" = only this phone can open the dashboard
+port = 8787
+# Open the dashboard on the phone at http://localhost:8787. Google allows http://localhost redirect URIs,
+# so register exactly: http://localhost:8787/api/youtube/callback
+public_url = "http://localhost:8787"
+secure_cookies = false
+session_hours = 168
+
+[paths]
+data_dir = "~/replay-studio-data"
+# Phone storage (after `termux-setup-storage`): put your video in the phone's Movies folder.
+media_dir = "~/storage/movies"
+
+[limits]
+max_upload_gb = 8
+library_quota_gb = 30
+min_free_disk_gb = 2
+upload_chunk_mb = 8
+
+[encoder]
+# Low-power mode: the video is encoded once when you add it (takes a while), then streaming only copies
+# it. Measured ~11x less CPU than live encoding; keeps the phone cool. No subscribe overlay in this mode.
+mode = "copy"
+prepare_preset = "veryfast"
+width = 1280
+height = 720
+fps = 30
+video_bitrate_k = 3000           # needs ~4 Mbps steady upload; YouTube's 720p30 minimum is 3 Mbps
+audio_bitrate_k = 128
+audio_sample_rate = 44100
+keyframe_seconds = 2
+ingest_protocol = "rtmps"
+
+[worker]
+youtube_poll_seconds = 30
+metrics_poll_seconds = 60
+reconnect_give_up_seconds = 0    # phones switch networks: keep retrying until you press Stop
+
+[ui]
+timezone = "Asia/Kolkata"
+
+[google]
+client_id = ""
+client_secret = ""

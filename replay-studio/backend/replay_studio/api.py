@@ -216,6 +216,7 @@ def create_app(cfg: Config | None = None, yt: YouTubeClient | None = None) -> Fa
             "session": view(db.active_session()),
             "recent": [view(s) for s in db.recent_sessions(10)],
             "worker": worker_status(), "timezone": cfg.ui.timezone, "server_time": time.time(),
+            "encoder_mode": cfg.encoder.mode,
         }
 
     @app.get("/api/defaults")
@@ -478,6 +479,11 @@ def create_app(cfg: Config | None = None, yt: YouTubeClient | None = None) -> Fa
             raise HTTPException(400, m["error"] or "The video is still being checked. Wait until it shows Ready.")
         if not Path(m.get("play_path") or m["path"]).exists():
             raise HTTPException(400, "The video file is missing on the host.")
+        lr = (m.get("probe") or {}).get("loop_ready") or {}
+        e = cfg.encoder
+        if e.mode == "copy" and lr.get("spec") != f"{e.width}x{e.height}@{e.fps}/{e.video_bitrate_k}k":
+            raise HTTPException(400, "This video was prepared for different encoder settings. Tap “Prepare again” "
+                                     "in the library, wait until it shows Ready, then start.")
         sched = parse_schedule(body.scheduled_start) if body.scheduled_start else None
         key = body.idempotency_key or None
         overlay = Overlay.from_dict((body.overlay or OverlayBody(**db.get_setting("overlay", {}))).model_dump()).__dict__

@@ -157,7 +157,8 @@ def prepare_loop_file(cfg: Config, src: Path, info: dict, dest: Path, timeout: f
     enc = cfg.encoder
     sr = enc.audio_sample_rate
     tmp = dest.with_name(dest.stem + ".partial" + dest.suffix)
-    clean = video_is_clean(info)
+    copy_mode = enc.mode == "copy"
+    clean = video_is_clean(info) and not copy_mode
     if clean:
         v_dur = info["video_duration"]
         vargs = ["-c:v", "copy"]
@@ -166,8 +167,12 @@ def prepare_loop_file(cfg: Config, src: Path, info: dict, dest: Path, timeout: f
         v_dur = info["video_duration"]
         vfilter = ["-vf", f"setpts=PTS-STARTPTS,scale={enc.width}:{enc.height}:force_original_aspect_ratio=decrease,"
                           f"pad={enc.width}:{enc.height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={enc.fps},format=yuv420p"]
-        vargs = ["-c:v", "libx264", "-preset", "medium", "-crf", "18", "-g", str(enc.fps * enc.keyframe_seconds),
-                 "-sc_threshold", "0", "-t", f"{v_dur:.3f}"]
+        if copy_mode:  # encode once to the live ingest spec; the live process then only copies it
+            from .encoder import video_encode_args
+            vargs = video_encode_args(cfg, enc.prepare_preset) + ["-t", f"{v_dur:.3f}"]
+        else:
+            vargs = ["-c:v", "libx264", "-preset", "medium", "-crf", "18", "-g", str(enc.fps * enc.keyframe_seconds),
+                     "-sc_threshold", "0", "-t", f"{v_dur:.3f}"]
     argv = [enc.ffmpeg, "-hide_banner", "-nostdin", "-y", "-loglevel", "error", "-i", str(Path(src).resolve())]
     if not info["has_audio"]:
         argv += ["-f", "lavfi", "-i", f"anullsrc=channel_layout=stereo:sample_rate={sr}"]
@@ -185,8 +190,12 @@ def prepare_loop_file(cfg: Config, src: Path, info: dict, dest: Path, timeout: f
         tmp.unlink(missing_ok=True)
         raise MediaError("Preparing the loop-ready copy failed: " + cp.stderr.strip()[-300:])
     os.replace(tmp, dest)
-    return {"video": "copied" if clean else "re-encoded (constant frame rate)", "samples": samples,
-            "duration": v_dur}
+    if copy_mode:
+        how = f"encoded for streaming ({enc.width}x{enc.height}@{enc.fps}, {enc.video_bitrate_k} kbps)"
+    else:
+        how = "copied" if clean else "re-encoded (constant frame rate)"
+    return {"video": how, "samples": samples, "duration": v_dur, "mode": enc.mode,
+            "spec": f"{enc.width}x{enc.height}@{enc.fps}/{enc.video_bitrate_k}k" if copy_mode else None}
 
 
 def thumbnail(cfg: Config, src: Path, dest: Path, at: float) -> Path:

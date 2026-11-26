@@ -29,7 +29,19 @@ def stop_and_confirm(stack) -> dict:
     return stack.wait_state("ended", 40)
 
 
-def test_three_loops_continuous_av_sync(stack, test_video):
+import pytest
+
+
+@pytest.fixture(params=["transcode", "copy"])
+def mode_stack(request, stack_factory):
+    """Run a test in both encoder modes (copy = low-power mode used on phones)."""
+    st = stack_factory(extra_env={"REPLAY_STUDIO_ENCODER_MODE": request.param})
+    st.mode = request.param
+    return st
+
+
+def test_three_loops_continuous_av_sync(mode_stack, test_video):
+    stack = mode_stack
     s = live_session(stack, test_video)
     bid = s["broadcast_id"]
     assert s["state_label"] == "Live" and s["watch_url"].endswith(bid)
@@ -39,6 +51,9 @@ def test_three_loops_continuous_av_sync(stack, test_video):
     assert s["state"] == "live" and s["broadcast_id"] == bid
     enc = s["encoder"]
     assert 0.9 <= enc["speed"] <= 1.1, enc            # real time
+    if stack.mode == "copy":
+        cmd = Path(f"/proc/{stack.our_encoders()[0]}/cmdline").read_bytes().split(b"\0")
+        assert b"copy" in cmd and b"libx264" not in cmd   # no live video encoding
     time.sleep(1.5)
     stop_and_confirm(stack)
 
@@ -80,7 +95,8 @@ def test_survives_dashboard_closing_and_shows_current_session(stack, test_video)
     stop_and_confirm(stack)
 
 
-def test_duplicate_starts_and_worker_restart_do_not_duplicate(stack, test_video):
+def test_duplicate_starts_and_worker_restart_do_not_duplicate(mode_stack, test_video):
+    stack = mode_stack
     mid = stack.upload(test_video)
     body = {"media_id": mid, "title": "dup test", "made_for_kids": False, "confirm_rights": True}
     key = str(uuid.uuid4())
@@ -119,7 +135,8 @@ def test_duplicate_starts_and_worker_restart_do_not_duplicate(stack, test_video)
     assert fs["insert_calls"] == 1 and [t["to"] for t in fs["transitions"]] == ["live", "complete"]
 
 
-def test_network_failure_reconnects_then_stop_while_reconnecting_never_resumes(stack, test_video):
+def test_network_failure_reconnects_then_stop_while_reconnecting_never_resumes(mode_stack, test_video):
+    stack = mode_stack
     s = live_session(stack, test_video)
     bid = s["broadcast_id"]
     # 1) outage then recovery into the same broadcast
