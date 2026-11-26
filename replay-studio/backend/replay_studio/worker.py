@@ -379,12 +379,16 @@ class Runner(threading.Thread):
                 self.last_metrics_poll = now
                 m = self.yt.video_metrics(sess["broadcast_id"])
                 self.db.update_session(self.sid, metrics=m)
+            if sess["error_kind"] in ("transient", "quota", "auth", "youtube"):
+                self.db.update_session(self.sid, error=None, error_kind=None)
         except YouTubeError as e:
-            # Media keeps flowing; API trouble while live is reported but is not a reason to stop.
-            if e.kind in ("transient", "quota"):
-                self.db.update_session(self.sid, error=f"Status check failed: {e.friendly}", error_kind=e.kind)
-            else:
+            # Media keeps flowing: losing API access (network, quota, revoked token) while live does not end
+            # the broadcast, so we keep streaming and tell the user what to fix.
+            if e.reason == "liveBroadcastNotFound":
                 raise
+            hint = " Reconnect YouTube in the dashboard so status checks and Stop work." if e.kind == "auth" else ""
+            self.db.update_session(self.sid, error=f"Streaming continues, but a YouTube status check failed: "
+                                                   f"{e.friendly}{hint}", error_kind=e.kind)
 
     def save_ingest(self, stream: dict | None) -> None:
         if not stream:

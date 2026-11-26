@@ -1,0 +1,51 @@
+# Replay Studio configuration. Copy to config.toml (or /etc/replay-studio/config.toml) and edit.
+# Any value can also be set via environment variable REPLAY_STUDIO_<SECTION>_<KEY>.
+
+[server]
+host = "0.0.0.0"                       # use "127.0.0.1" when a reverse proxy (Caddy/nginx) is in front
+port = 8787
+# The address you type in the browser. Must match the redirect URI registered in Google Cloud:
+#   <public_url>/api/youtube/callback
+public_url = "http://localhost:8787"
+secure_cookies = false                 # set true when served over HTTPS
+session_hours = 72                     # dashboard login lifetime
+
+[paths]
+data_dir = "./data"                    # database, encrypted tokens, uploaded videos (keep private)
+media_dir = "./media"                  # host folder whose videos can be picked without uploading
+
+[limits]
+max_upload_gb = 20
+library_quota_gb = 200
+min_free_disk_gb = 5
+upload_chunk_mb = 8
+
+[google]
+client_id = ""                         # from Google Cloud Console > Credentials > OAuth client (Web application)
+client_secret = ""
+
+[encoder]
+ffmpeg = "ffmpeg"
+ffprobe = "ffprobe"
+width = 1280
+height = 720
+fps = 30
+video_bitrate_k = 4000                 # CBR. YouTube: 720p30 H.264 minimum 3 Mbps; raise toward its recommendation if upload allows
+audio_bitrate_k = 128                  # YouTube: 128 kbps stereo AAC
+audio_sample_rate = 44100              # YouTube: 44.1 kHz for stereo
+keyframe_seconds = 2                   # YouTube: recommended 2 s, never more than 4 s
+x264_preset = "veryfast"               # "superfast"/"ultrafast" on weak CPUs; check encoder speed stays ~1.00x
+ingest_protocol = "rtmps"              # always rtmps for YouTube
+font_file = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+
+[worker]
+youtube_poll_seconds = 30              # broadcast/stream status checks while live (1 quota unit each)
+metrics_poll_seconds = 60              # viewer metrics
+ingest_wait_seconds = 120
+reconnect_initial_seconds = 2
+reconnect_max_seconds = 60
+reconnect_give_up_seconds = 1800       # 0 = keep retrying forever
+scheduled_lead_seconds = 90            # start ingest this long before a scheduled time
+
+[ui]
+timezone = "Asia/Kolkata"              # times are shown in this zone; stored as UTC

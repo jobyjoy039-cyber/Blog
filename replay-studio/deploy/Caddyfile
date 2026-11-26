@@ -1,0 +1,14 @@
+# Remote access over HTTPS with automatic Let's Encrypt certificates.
+# Requires a DNS name pointing at this host and ports 80/443 forwarded to it.
+# Replay Studio's own password login stays in force; basic_auth adds a second layer.
+replay.example.com {
+	encode gzip
+	# Generate the hash with:  caddy hash-password
+	basic_auth {
+		admin $2a$14$REPLACE_WITH_OUTPUT_OF_caddy_hash-password
+	}
+	request_body {
+		max_size 64MB
+	}
+	reverse_proxy 127.0.0.1:8787
+}

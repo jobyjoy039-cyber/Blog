@@ -1,0 +1,29 @@
+[Unit]
+Description=Replay Studio stream worker (FFmpeg + YouTube Live)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=replaystudio
+Group=replaystudio
+WorkingDirectory=/opt/replay-studio
+Environment=REPLAY_STUDIO_CONFIG=/etc/replay-studio/config.toml
+ExecStart=/opt/replay-studio/.venv/bin/replay-studio worker
+# Restart after crashes; the worker reconciles with YouTube and resumes the same broadcast.
+# A stopped stream is never resumed (stop intent is stored in SQLite).
+Restart=always
+RestartSec=3
+# Kill FFmpeg together with the worker so a restart never doubles the ingest.
+KillMode=control-group
+TimeoutStopSec=15
+Nice=-5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/replay-studio
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

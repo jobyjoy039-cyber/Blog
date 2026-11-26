@@ -218,3 +218,14 @@ def test_stop_before_live_cancels_and_deletes_upcoming(stack, test_video):
     stack.client.post(f"/api/sessions/{s['id']}/stop")
     stack.wait_state("cancelled", 30)
     assert stack.fake_state()["broadcasts"] == []
+
+
+def test_revoked_access_while_live_keeps_streaming_and_explains(stack, test_video):
+    s = live_session(stack, test_video)
+    stack.fake.post("/_control/revoke")
+    s = wait_for(lambda: (x := stack.session()) and x["error_kind"] == "auth" and x, 20, what="auth error")
+    assert s["state"] == "live" and "Reconnect" in s["error"]
+    assert len(stack.our_encoders()) == 1                 # media keeps flowing
+    stack.connect_youtube()                               # user reconnects from the dashboard
+    wait_for(lambda: stack.session()["error_kind"] is None, 20, what="error cleared")
+    stop_and_confirm(stack)

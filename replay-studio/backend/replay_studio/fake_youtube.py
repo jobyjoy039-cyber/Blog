@@ -118,8 +118,11 @@ def create_app(rtmp_port: int, record_dir: Path, ffmpeg: str = "ffmpeg", public_
     @app.post("/token")
     async def token(req: Request):
         form = await req.form()
-        if form.get("grant_type") == "refresh_token" and not str(form.get("refresh_token", "")).startswith("1//fake"):
+        if form.get("grant_type") == "refresh_token" and (st.get("revoked") or
+                                                          not str(form.get("refresh_token", "")).startswith("1//fake")):
             return JSONResponse({"error": "invalid_grant", "error_description": "Token has been expired or revoked."}, 400)
+        if form.get("grant_type") == "authorization_code":
+            st["revoked"] = False
         tok = "ya29.fake-" + secrets.token_urlsafe(12)
         st["tokens"].add(tok)
         return {"access_token": tok, "expires_in": 3600, "token_type": "Bearer",
@@ -273,6 +276,12 @@ def create_app(rtmp_port: int, record_dir: Path, ffmpeg: str = "ffmpeg", public_
     def api_down(down: bool):
         st["api_down"] = down
         return {"api_down": down}
+
+    @app.post("/_control/revoke")
+    def revoke_all():
+        st["tokens"].clear()
+        st["revoked"] = True
+        return {}
 
     @app.post("/_control/ingest")
     def ingest_ctl(up: bool):
