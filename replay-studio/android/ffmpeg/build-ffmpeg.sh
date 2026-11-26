@@ -35,10 +35,12 @@ mkdir -p "$WORK/x264" && tar -xzf "$SRC/x264.tar.gz" -C "$WORK/x264" --strip-com
   make -j"$JOBS" >/dev/null && make install >/dev/null )
 
 echo "== TLS alignment shim"
-# Android's arm64 bionic refuses to start an executable whose TLS segment is aligned below 64 bytes
-# ("executable's TLS segment is underaligned"). One 64-byte-aligned thread-local variable fixes it.
+# Only matters for the static test build: bionic's static libc.a brings an 8-byte-aligned ELF TLS variable
+# (GWP-ASan), and arm64 bionic refuses executables whose TLS segment is aligned below 64 bytes. A 64-byte-
+# aligned real (not emulated) TLS variable raises the segment alignment. The dynamic APK build has no TLS
+# segment at all (that variable lives in the phone's libc.so); the script checks this below.
 printf '__thread char replay_studio_tls_align[64] __attribute__((aligned(64), used));\n' >"$WORK/tlsalign.c"
-"$CC" -c -fPIC -O2 "$WORK/tlsalign.c" -o "$WORK/tlsalign.o"
+"$CC" -c -fPIC -O2 -fno-emulated-tls "$WORK/tlsalign.c" -o "$WORK/tlsalign.o"
 
 echo "== FFmpeg ($VARIANT)"
 mkdir -p "$WORK/ffmpeg" && tar -xJf "$SRC/ffmpeg.tar.xz" -C "$WORK/ffmpeg" --strip-components=1
@@ -51,8 +53,11 @@ mkdir -p "$WORK/ffmpeg" && tar -xJf "$SRC/ffmpeg.tar.xz" -C "$WORK/ffmpeg" --str
       --disable-shared --enable-static --disable-debug --disable-doc --disable-ffplay \
       --disable-vulkan --disable-mediacodec --disable-jni --disable-indevs --enable-indev=lavfi --disable-outdevs \
       --extra-cflags="-I$DEPS/include -O2" --extra-ldflags="-L$DEPS/lib $LDEXTRA" \
-      --extra-ldexeflags="$WORK/tlsalign.o" >"$WORK/ffmpeg-configure.log"
+      $( [ "$VARIANT" = static ] && echo --extra-ldexeflags="$WORK/tlsalign.o" ) >"$WORK/ffmpeg-configure.log"
   make -j"$JOBS" >"$WORK/ffmpeg-make.log" 2>&1 && make install >/dev/null )
 llvm-strip "$OUT/$VARIANT/bin/ffmpeg" "$OUT/$VARIANT/bin/ffprobe"
+if [ "$VARIANT" = dynamic ] && llvm-readelf -lW "$OUT/$VARIANT/bin/ffmpeg" | grep -q " TLS "; then
+  echo "ERROR: dynamic ffmpeg has an ELF TLS segment; it would not start on Android 9 and older" >&2; exit 1
+fi
 ls -la "$OUT/$VARIANT/bin"
 echo "Built $VARIANT FFmpeg into $OUT/$VARIANT/bin"
